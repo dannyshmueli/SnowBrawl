@@ -339,8 +339,8 @@ class SnowBrawlPlayer {
         // TODO: Add sound effect
         
         // Update UI
-        if (this.isHuman) {
-            UI.updateSnowballCount(this.snowballCount);
+        if (this.isHuman && Game && Game.ui) {
+            Game.ui.updateSnowballCount(this.snowballCount);
         }
     }
     
@@ -364,8 +364,10 @@ class SnowBrawlPlayer {
         
         // Update UI if human player
         if (this.isHuman) {
-            UI.updateHealth(this.health);
-            UI.showHitIndicator();
+            if (Game && Game.ui) {
+                Game.ui.updateHealth(this.health);
+                Game.ui.showHitIndicator();
+            }
         }
     }
     
@@ -383,7 +385,9 @@ class SnowBrawlPlayer {
             
             // Update UI if attacker is human
             if (attacker.isHuman) {
-                UI.updateScore(attacker.score);
+                if (Game && Game.ui) {
+                    Game.ui.updateScore(attacker.score);
+                }
             }
         }
         
@@ -392,7 +396,9 @@ class SnowBrawlPlayer {
         
         // Show elimination message
         if (this.isHuman) {
-            UI.showGameOver(false);
+            if (Game && Game.ui) {
+                Game.ui.showGameOver(false);
+            }
         } else if (attacker && attacker.isHuman) {
             Utils.showMessage(`You eliminated AI ${this.id}!`);
         }
@@ -438,7 +444,9 @@ class SnowBrawlPlayer {
                 
                 // Update UI if human player
                 if (this.isHuman) {
-                    UI.updateSnowballCount(this.snowballCount);
+                    if (Game && Game.ui) {
+                        Game.ui.updateSnowballCount(this.snowballCount);
+                    }
                 }
             }
         }
@@ -457,12 +465,16 @@ class SnowBrawlPlayer {
         
         // Update UI if human player
         if (this.isHuman) {
-            UI.updateDiamondCount(this.diamondCount);
-            UI.updateScore(this.score);
-            UI.showDiamondIndicator();
+            if (Game && Game.ui) {
+                Game.ui.updateDiamondCount(this.diamondCount);
+                Game.ui.updateScore(this.score);
+                Game.ui.showDiamondIndicator();
+            }
             
             // Show upgrade menu
-            UI.showUpgradeMenu();
+            if (Game && Game.ui) {
+                Game.ui.showUpgradeMenu();
+            }
         }
     }
     
@@ -514,7 +526,9 @@ class SnowBrawlPlayer {
         
         // Update UI if human player
         if (this.isHuman) {
-            UI.updateDiamondCount(this.diamondCount);
+            if (Game && Game.ui) {
+                Game.ui.updateDiamondCount(this.diamondCount);
+            }
             Utils.showMessage(`Upgraded ${upgradeType}!`);
         }
         
@@ -566,10 +580,12 @@ class SnowBrawlPlayer {
         
         // Update UI if human player
         if (this.isHuman) {
-            UI.updateHealth(this.health);
-            UI.updateSnowballCount(this.snowballCount);
-            UI.updateDiamondCount(this.diamondCount);
-            UI.updateScore(this.score);
+            if (Game && Game.ui) {
+                Game.ui.updateHealth(this.health);
+                Game.ui.updateSnowballCount(this.snowballCount);
+                Game.ui.updateDiamondCount(this.diamondCount);
+                Game.ui.updateScore(this.score);
+            }
         }
     }
 }

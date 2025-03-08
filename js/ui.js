@@ -301,3 +301,23 @@ class SnowBrawlUI {
 // Expose SnowBrawlUI to the global scope as UI to avoid conflicts with built-in objects
 // and to maintain compatibility with existing code
 window.UI = SnowBrawlUI;
+
+// Create a global instance for direct access
+// This allows code to use UI.method() directly without needing to create a new instance
+if (typeof window.UIInstance === 'undefined') {
+    window.UIInstance = new SnowBrawlUI();
+    
+    // Add a getter for each method on the UI class to the global UI object
+    // This allows UI.method() to work by delegating to UIInstance.method()
+    Object.getOwnPropertyNames(SnowBrawlUI.prototype).forEach(method => {
+        if (method !== 'constructor' && typeof SnowBrawlUI.prototype[method] === 'function') {
+            Object.defineProperty(window.UI, method, {
+                get: function() {
+                    return window.UIInstance[method].bind(window.UIInstance);
+                }
+            });
+        }
+    });
+    
+    console.log('Global UI instance created and methods exposed');
+}

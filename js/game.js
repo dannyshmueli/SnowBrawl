@@ -187,8 +187,17 @@ class GameClass {
         
         // Create UI
         try {
-            GameClass.ui = new UI();
-            console.log('UI created successfully');
+            // Use SnowBrawlUI instead of UI since we renamed the class
+            if (typeof SnowBrawlUI === 'function') {
+                GameClass.ui = new SnowBrawlUI();
+                console.log('UI created successfully using SnowBrawlUI');
+            } else if (typeof UI === 'function') {
+                // Fallback to UI if SnowBrawlUI is not available
+                GameClass.ui = new UI();
+                console.log('UI created successfully using UI');
+            } else {
+                console.error('Neither SnowBrawlUI nor UI is defined');
+            }
             GameClass.ui.showStartMenu();
             console.log('Start menu shown successfully');
             
