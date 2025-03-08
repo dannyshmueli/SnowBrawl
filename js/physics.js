@@ -370,17 +370,22 @@ class SnowBrawlPhysics {
                 // Resolve along X axis
                 if (dynamic.position.x < staticObj.position.x) {
                     dynamic.position.x -= overlapX;
+                    // Only zero out velocity if moving toward the wall
+                    if (dynamic.velocity.x > 0) dynamic.velocity.x = 0;
                 } else {
                     dynamic.position.x += overlapX;
+                    // Only zero out velocity if moving toward the wall
+                    if (dynamic.velocity.x < 0) dynamic.velocity.x = 0;
                 }
-                dynamic.velocity.x = 0;
             } else if (overlapY < overlapX && overlapY < overlapZ) {
                 // Resolve along Y axis
                 if (dynamic.position.y < staticObj.position.y) {
                     dynamic.position.y -= overlapY;
-                    dynamic.velocity.y = 0;
+                    // Only zero out velocity if moving toward the wall
+                    if (dynamic.velocity.y > 0) dynamic.velocity.y = 0;
                 } else {
                     dynamic.position.y += overlapY;
+                    // Always zero out downward velocity when on ground
                     dynamic.velocity.y = 0;
                     dynamic.isOnGround = true;
                 }
@@ -388,10 +393,13 @@ class SnowBrawlPhysics {
                 // Resolve along Z axis
                 if (dynamic.position.z < staticObj.position.z) {
                     dynamic.position.z -= overlapZ;
+                    // Only zero out velocity if moving toward the wall
+                    if (dynamic.velocity.z > 0) dynamic.velocity.z = 0;
                 } else {
                     dynamic.position.z += overlapZ;
+                    // Only zero out velocity if moving toward the wall
+                    if (dynamic.velocity.z < 0) dynamic.velocity.z = 0;
                 }
-                dynamic.velocity.z = 0;
             }
         }
     }

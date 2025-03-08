@@ -226,14 +226,41 @@ class SnowBrawlPlayer {
             moveDirection.normalize();
         }
         
-        // Apply camera rotation to movement direction
-        const cameraDirection = new THREE.Vector3();
-        this.camera.getWorldDirection(cameraDirection);
-        const cameraRotation = Math.atan2(cameraDirection.x, cameraDirection.z);
+        // Calculate the actual movement direction based on camera orientation
+        // This is a more direct approach that doesn't rely on rotation angles
+        const worldMoveDirection = new THREE.Vector3();
         
-        // Rotate movement direction based on camera rotation
-        const rotatedX = moveDirection.x * Math.cos(cameraRotation) - moveDirection.z * Math.sin(cameraRotation);
-        const rotatedZ = moveDirection.x * Math.sin(cameraRotation) + moveDirection.z * Math.cos(cameraRotation);
+        // Get camera direction vectors (normalized and with y component removed for horizontal movement)
+        const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        cameraForward.y = 0;
+        cameraForward.normalize();
+        
+        const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+        cameraRight.y = 0;
+        cameraRight.normalize();
+        
+        // Add the appropriate direction vectors based on input
+        if (this.input.forward) {
+            worldMoveDirection.add(cameraForward);
+        }
+        if (this.input.backward) {
+            worldMoveDirection.sub(cameraForward);
+        }
+        if (this.input.right) {
+            worldMoveDirection.add(cameraRight);
+        }
+        if (this.input.left) {
+            worldMoveDirection.sub(cameraRight);
+        }
+        
+        // Normalize the result to maintain consistent speed in all directions
+        if (worldMoveDirection.length() > 0) {
+            worldMoveDirection.normalize();
+        }
+        
+        // Use the calculated world direction directly
+        const rotatedX = worldMoveDirection.x;
+        const rotatedZ = worldMoveDirection.z;
         
         // Set velocity based on movement direction
         const acceleration = GAME_CONSTANTS.PLAYER.ACCELERATION * deltaTime;
