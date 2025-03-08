@@ -1,0 +1,17 @@
+{
+  "name": "snowbrawl",
+  "version": "1.0.0",
+  "description": "A first-person snowball fighting game built with Three.js where players compete to be the last one standing.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "eslint": "^9.22.0",
+    "globals": "^16.0.0"
+  }
+}

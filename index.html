@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnowBrawl</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="hud">
+            <div id="health-container">
+                <div id="health-label">Health:</div>
+                <div id="health-value">10</div>
+            </div>
+            <div id="snowballs-container">
+                <div id="snowballs-label">Snowballs:</div>
+                <div id="snowballs-value">10</div>
+            </div>
+            <div id="diamonds-container">
+                <div id="diamonds-label">Diamonds:</div>
+                <div id="diamonds-value">0</div>
+            </div>
+            <div id="score-container">
+                <div id="score-label">Score:</div>
+                <div id="score-value">0</div>
+            </div>
+            <div id="time-container">
+                <div id="time-label">Time:</div>
+                <div id="time-value">5:00</div>
+            </div>
+            <button id="upgrade-button" class="hud-button">Upgrades</button>
+        </div>
+        <div id="upgrade-menu" class="menu hidden">
+            <h2>Upgrades</h2>
+            <div class="upgrade-options">
+                <button class="upgrade-option" data-upgrade="speed">Movement Speed</button>
+                <button class="upgrade-option" data-upgrade="damage">Snowball Damage</button>
+                <button class="upgrade-option" data-upgrade="range">Throw Range</button>
+                <button class="upgrade-option" data-upgrade="size">Snowball Size</button>
+                <button class="upgrade-option" data-upgrade="capacity">Bag Capacity</button>
+            </div>
+            <button id="close-upgrade-menu" class="menu-button">Close</button>
+        </div>
+        <div id="game-over" class="menu hidden">
+            <h2 id="game-over-title">Game Over</h2>
+            <div id="game-over-message"></div>
+            <div id="final-score"></div>
+            <button id="restart-game" class="menu-button">Play Again</button>
+        </div>
+        <div id="start-menu" class="menu">
+            <h1>SnowBrawl</h1>
+            <div class="game-options">
+                <h3>Game Duration</h3>
+                <div class="option-buttons">
+                    <button class="duration-option" data-duration="5">5 Minutes</button>
+                    <button class="duration-option" data-duration="10">10 Minutes</button>
+                    <button class="duration-option" data-duration="15">15 Minutes</button>
+                </div>
+            </div>
+            <button id="start-game" class="menu-button" onclick="if(typeof GameClass !== 'undefined' && typeof GameClass.start === 'function') { GameClass.start(); }">Start Game</button>
+        </div>
+    </div>
+
+    <!-- Three.js library - main library from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+    
+    <!-- Load PointerLockControls and GLTFLoader from local files -->
+    <script src="js/lib/three/PointerLockControls.js"></script>
+    <script src="js/lib/three/GLTFLoader.js"></script>
+    
+    <!-- Script to check if THREE is loaded properly -->
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('THREE.js availability check:', typeof THREE !== 'undefined' ? 'Available' : 'Not available');
+            console.log('PointerLockControls availability check:', 
+                typeof THREE !== 'undefined' && typeof THREE.PointerLockControls !== 'undefined' ? 'Available' : 'Not available');
+            console.log('GLTFLoader availability check:', 
+                typeof THREE !== 'undefined' && typeof THREE.GLTFLoader !== 'undefined' ? 'Available' : 'Not available');
+        });
+    </script>
+
+    <!-- Game scripts with defer to ensure THREE is loaded first -->
+    <script src="js/constants.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/physics.js" defer></script>
+    <script src="js/player.js" defer></script>
+    <script src="js/ai.js" defer></script>
+    <script src="js/snowball.js" defer></script>
+    <script src="js/map.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/game.js" defer></script>
+    <script src="js/main.js" defer></script>
+</body>
+</html>
