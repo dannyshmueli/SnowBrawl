@@ -19,6 +19,13 @@ class SnowBrawlPlayer {
         this.diamondCount = 0;
         this.score = 0;
         
+        // Hit effect properties
+        this.isHit = false;
+        this.hitTime = 0;
+        this.hitDuration = GAME_CONSTANTS.PLAYER.HIT_EFFECT_DURATION;
+        this.hitFlashCount = GAME_CONSTANTS.PLAYER.HIT_FLASH_COUNT;
+        this.originalColor = null; // will store the original mesh color
+        
         // Movement properties
         this.position = new THREE.Vector3(0, GAME_CONSTANTS.PLAYER.HEIGHT / 2, 0);
         this.velocity = new THREE.Vector3(0, 0, 0);
@@ -85,7 +92,24 @@ class SnowBrawlPlayer {
     createPlayerMesh() {
         // Create player body
         const geometry = new THREE.CapsuleGeometry(this.radius, this.height - 2 * this.radius, 8, 8);
-        const material = new THREE.MeshLambertMaterial({ color: 0x0000FF });
+        
+        // Determine player color based on whether they're human or AI
+        let playerColor;
+        
+        if (this.isHuman) {
+            // Human player gets a bright blue color
+            playerColor = 0x0088FF; // Bright blue for human player
+        } else {
+            // AI players get colors based on their ID to ensure they're all different
+            // Extract number from AI ID (e.g., 'ai-1' becomes 1)
+            const aiNumber = parseInt(this.id.replace('ai-', ''), 10) || 0;
+            
+            // Use a golden ratio multiplier to get well-distributed colors
+            const hue = (aiNumber * 137.5) % 360; // 137.5° is approximately the golden angle in degrees
+            playerColor = new THREE.Color().setHSL(hue / 360, 0.8, 0.5).getHex();
+        }
+        
+        const material = new THREE.MeshLambertMaterial({ color: playerColor });
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.copy(this.position);
         
@@ -420,7 +444,11 @@ class SnowBrawlPlayer {
         if (this.health <= 0) {
             this.health = 0;
             this.eliminate(attackerId);
+            return; // Don't apply hit effect if eliminated
         }
+        
+        // Apply hit effect - flash the player's color
+        this.applyHitEffect();
         
         // Update UI if human player
         if (this.isHuman) {
@@ -432,6 +460,65 @@ class SnowBrawlPlayer {
         
         // Update health display for all players
         this.updateNameTag();
+    }
+    
+    /**
+     * Apply a visual hit effect to the player
+     */
+    applyHitEffect() {
+        // Only apply if we have a valid mesh
+        if (!this.mesh || !this.mesh.material) {
+            return;
+        }
+        
+        // Store the original color if not already stored
+        if (!this.originalColor) {
+            this.originalColor = this.mesh.material.color.clone();
+        }
+        
+        // Set hit state
+        this.isHit = true;
+        this.hitTime = Date.now();
+        
+        // Set initial hit color (bright red)
+        this.mesh.material.color.set(0xFF0000);
+        
+        // Schedule the hit effect update
+        this.updateHitEffect();
+    }
+    
+    /**
+     * Update the hit effect animation
+     */
+    updateHitEffect() {
+        if (!this.isHit || !this.mesh) return;
+        
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - this.hitTime;
+        
+        // Check if hit effect duration has expired
+        if (elapsedTime >= this.hitDuration) {
+            // Reset to original color
+            if (this.originalColor) {
+                this.mesh.material.color.copy(this.originalColor);
+            }
+            this.isHit = false;
+            return;
+        }
+        
+        // Calculate flash state based on elapsed time
+        const flashPeriod = this.hitDuration / (this.hitFlashCount * 2);
+        const flashState = Math.floor(elapsedTime / flashPeriod) % 2;
+        
+        // Toggle between red and original color
+        if (flashState === 0) {
+            this.mesh.material.color.set(0xFF0000);
+        } else if (this.originalColor) {
+            this.mesh.material.color.copy(this.originalColor);
+        }
+        
+        // Schedule next update
+        requestAnimationFrame(() => this.updateHitEffect());
     }
     
     /**
@@ -476,8 +563,18 @@ class SnowBrawlPlayer {
      * @param {number} force - Force of knockback
      */
     applyKnockback(direction, force) {
-        this.velocity.x += direction.x * force;
-        this.velocity.z += direction.z * force;
+        // Apply stronger horizontal knockback
+        this.velocity.x += direction.x * force * 1.5;
+        this.velocity.z += direction.z * force * 1.5;
+        
+        // Add a small vertical component to make the knockback more visible
+        // This creates a slight "hop" effect when hit
+        this.velocity.y += force * 0.5;
+        
+        // Ensure player is not on ground during knockback
+        this.isOnGround = false;
+        
+        console.log(`Applied knockback to player ${this.id}: velocity=(${this.velocity.x.toFixed(2)}, ${this.velocity.y.toFixed(2)}, ${this.velocity.z.toFixed(2)})`);
     }
         
     /**

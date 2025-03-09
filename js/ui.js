@@ -3,8 +3,8 @@
  * Handles user interface elements and interactions
  */
 
-// Using SnowBrawlUI instead of UI to avoid conflicts with built-in globals
-class SnowBrawlUI {
+// Using a different name to avoid conflicts with built-in globals
+window.SnowBrawlUI = class {
     constructor() {
         // Cache DOM elements
         this.cacheDOM();

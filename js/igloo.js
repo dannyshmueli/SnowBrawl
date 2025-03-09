@@ -10,13 +10,31 @@ class Igloo {
      * @param {THREE.Vector3} position - Position of the igloo
      * @param {number} entranceDirection - Direction of the entrance in radians (0 = positive X axis)
      * @param {string} ownerId - ID of the player who owns this igloo
+     * @param {number} playerColor - Color to use for the igloo (hex value)
      */
-    constructor(scene, position, entranceDirection = 0, ownerId = null) {
+    constructor(scene, position, entranceDirection = 0, ownerId = null, playerColor = null) {
         this.scene = scene;
         this.position = position;
         this.entranceDirection = entranceDirection;
         this.ownerId = ownerId; // Store the owner's ID
+        this.playerColor = playerColor; // Store the player's color directly
         this.meshes = [];
+        
+        // Default color if none provided
+        if (this.playerColor === null) {
+            if (this.ownerId === 'player') {
+                // Human player gets a bright blue color
+                this.playerColor = 0x0088FF;
+            } else if (this.ownerId && this.ownerId.includes('ai-')) {
+                // AI players get colors based on their ID
+                const aiNumber = parseInt(this.ownerId.replace('ai-', ''), 10) || 0;
+                const hue = (aiNumber * 137.5) % 360;
+                this.playerColor = new THREE.Color().setHSL(hue / 360, 0.8, 0.5).getHex();
+            } else {
+                // Default white color
+                this.playerColor = 0xEEEEEE;
+            }
+        }
         
         // Igloo dimensions from constants
         this.width = GAME_CONSTANTS.IGLOO.WIDTH;
@@ -43,15 +61,20 @@ class Igloo {
         this.group.rotation.y = this.entranceDirection;
         this.scene.add(this.group);
         
-        // Materials for the igloo
+        // Use the player color that was set in the constructor
+        console.log(`Using player color for igloo: ${this.playerColor.toString(16)}`);
+        
+        // Materials for the igloo using player's color
         const iglooMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xEEEEEE,
+            color: this.playerColor,
             side: THREE.DoubleSide
         });
         
         // Slightly different color for the roof to add visual interest
+        // Make it a bit lighter than the base color
+        const roofColor = new THREE.Color(this.playerColor).multiplyScalar(1.2);
         const roofMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xDDDDDD,
+            color: roofColor,
             side: THREE.DoubleSide
         });
         
@@ -132,9 +155,10 @@ class Igloo {
         }
         
         // Create a helper object to visualize the entrance position (for debugging)
+        // Use the player's color for the entrance marker
         const entranceMarker = new THREE.Mesh(
             new THREE.SphereGeometry(0.2, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
+            new THREE.MeshBasicMaterial({ color: this.playerColor, wireframe: true })
         );
         entranceMarker.position.copy(this.entrancePosition);
         this.scene.add(entranceMarker);
@@ -215,6 +239,33 @@ class Igloo {
         // Register the igloo itself as a collider for player-igloo collision detection
         physics.registerCollider(this, 'igloos');
         console.log(`Registered igloo with physics system, owner: ${this.ownerId}`);
+    }
+    
+    /**
+     * Get the color of the player who owns this igloo
+     * @returns {number} - The color as a hex value
+     */
+    getPlayerColor() {
+        // Default color if no owner or player not found
+        const defaultColor = 0xEEEEEE; // White
+        
+        try {
+            // If no owner ID, return default color
+            if (!this.ownerId) {
+                console.log('No owner ID for igloo, using default color');
+                return defaultColor;
+            }
+            
+            if (this.playerColor) {
+                return this.playerColor;
+            }else {
+                return defaultColor;    
+            }
+            
+        } catch (error) {
+            console.error('Error getting player color:', error);
+            return defaultColor;
+        }
     }
 }
 

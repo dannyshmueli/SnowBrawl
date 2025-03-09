@@ -33,17 +33,23 @@ class SnowBrawlAI extends Player {
     }
     
     /**
-     * Customize AI appearance with random color
+     * Customize AI appearance with deterministic color based on ID
      */
     customizeAppearance() {
         try {
-            // Generate a random color for this AI
-            const hue = Utils.randomRange(0, 360);
-            const color = new THREE.Color().setHSL(hue / 360, 0.8, 0.5);
+            // Extract the AI number from the ID (e.g., 'ai-1' becomes 1)
+            const aiNumber = parseInt(this.id.replace('ai-', ''), 10) || 0;
+            
+            // Use the golden ratio multiplier to get well-distributed colors
+            // This matches the exact same algorithm used in player.js
+            const hue = (aiNumber * 137.5) % 360; // 137.5° is approximately the golden angle in degrees
+            const colorValue = new THREE.Color().setHSL(hue / 360, 0.8, 0.5).getHex();
+            
+            console.log(`AI Player ${this.id} using deterministic color with hue ${hue}, hex: ${colorValue.toString(16)}`);
             
             // Apply color to mesh if it exists
             if (this.mesh && this.mesh.material) {
-                this.mesh.material.color.copy(color);
+                this.mesh.material.color.set(colorValue);
             }
         } catch (error) {
             console.error('Error customizing AI appearance:', error);

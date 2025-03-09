@@ -243,17 +243,29 @@ class SnowBrawlPhysics {
                 
                 // Check distance to each point and use the minimum
                 let minDistance = Infinity;
+                let minHorizontalDistance = Infinity;
+                let minVerticalDistance = Infinity;
+                
                 for (const point of checkPoints) {
+                    // Calculate 3D distance
                     const pointDistance = snowball.position.distanceTo(point);
+                    
+                    // Calculate horizontal distance (ignoring Y axis)
+                    const horizontalDistance = new THREE.Vector2(
+                        snowball.position.x - point.x,
+                        snowball.position.z - point.z
+                    ).length();
+                    
+                    // Calculate vertical distance (Y axis only)
+                    const verticalDistance = Math.abs(snowball.position.y - point.y);
+                    
+                    // Track minimum distances
                     minDistance = Math.min(minDistance, pointDistance);
+                    minHorizontalDistance = Math.min(minHorizontalDistance, horizontalDistance);
+                    minVerticalDistance = Math.min(minVerticalDistance, verticalDistance);
                 }
                 
-                // Use a MUCH more generous collision threshold for better gameplay
-                // Increased from 3.0x to 5.0x for AI players to make hitting them easier
-                // This compensates for network latency and makes the game more fun
-                const playerRadius = player.radius || 0.5; // Default to 0.5 if radius is undefined
-                const multiplier = player.id === 'player' ? 3.0 : 5.0; // More generous for AI players
-                const collisionThreshold = snowball.radius + playerRadius * multiplier;
+                const collisionThreshold = snowball.radius;
                 
                 // Check if collision occurred
                 // Determine if this is a player snowball targeting an AI or vice versa
@@ -277,15 +289,23 @@ class SnowBrawlPhysics {
                     console.log(`Using enhanced collision threshold for AI->player hit: ${effectiveCollisionThreshold.toFixed(1)}`);
                 }
                 
-                // Debug log for close misses
+                // Calculate maximum allowed vertical distance (more strict than horizontal)
+                // This prevents snowballs high in the air from hitting players below them
+                const maxVerticalThreshold = playerHeight * 0.5;
+                
+                // Debug log for close misses and vertical misses
                 if (minDistance < effectiveCollisionThreshold * 1.2) {
-                    console.log(`PHYSICS: Close snowball! Distance: ${minDistance.toFixed(1)}, Threshold: ${effectiveCollisionThreshold.toFixed(1)}`);
+                    console.log(`PHYSICS: Close snowball! 3D Distance: ${minDistance.toFixed(1)}, Horizontal: ${minHorizontalDistance.toFixed(1)}, Vertical: ${minVerticalDistance.toFixed(1)}, Threshold: ${effectiveCollisionThreshold.toFixed(1)}`);
                 }
                 
                 // No more forced hits - make it fair for both sides
                 const forceHit = false;
                 
-                if (minDistance < effectiveCollisionThreshold || forceHit) {
+                // Check both 3D distance AND vertical distance separately
+                // This prevents unrealistic hits when snowballs are far above/below players
+                const isValidHit = minDistance < 1 && minVerticalDistance < maxVerticalThreshold;
+                
+                if (isValidHit || forceHit) {
                     // More detailed logging to show who hit whom
                     const targetType = player.id === 'player' ? 'HUMAN PLAYER' : 'AI PLAYER';
                     console.log(`*** SNOWBALL HIT! ${isPlayerSnowball ? 'Player hit' : 'AI hit'} ${targetType} ${player.id} ${forceHit ? '(FORCED HIT)' : ''} ***`);

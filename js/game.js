@@ -312,8 +312,12 @@ class GameClass {
                 GameClass.player.position.set(iglooPosition.x, 1, iglooPosition.z);
                 console.log(`Human player positioned at igloo: (${iglooPosition.x}, 1, ${iglooPosition.z})`);
                 
-                // Create igloo for human player
-                GameClass.createIgloo(iglooPosition, 0, GameClass.player.id);
+                // Create igloo for human player after player mesh and color are fully initialized
+                // This ensures the igloo color will match the player color
+                setTimeout(() => {
+                    GameClass.createIgloo(iglooPosition, 0, GameClass.player.id);
+                    console.log('Created human player igloo with matching color');
+                }, 100);
             } else {
                 // Fallback if setIglooPosition isn't available
                 GameClass.player.position.set(0, 1, 0);
@@ -411,11 +415,6 @@ class GameClass {
                 // Set igloo position if the method exists
                 if (typeof ai.setIglooPosition === 'function') {
                     ai.setIglooPosition(position);
-                    
-                    // Create igloo for AI player
-                    // Calculate entrance direction to face center of map
-                    const entranceDirection = Math.atan2(-position.z, -position.x);
-                    GameClass.createIgloo(position, entranceDirection, ai.id);
                 }
                 
                 // Register AI player with physics system
@@ -434,7 +433,22 @@ class GameClass {
                 GameClass.player.setIglooPosition(positions[0]);
             }
             
-            console.log('AI players created successfully!');
+            // Now that all AI players are created and initialized with their colors,
+            // create the igloos for each AI player with a slight delay to ensure colors are properly set
+            setTimeout(() => {
+                GameClass.aiPlayers.forEach((ai, index) => {
+                    if (ai.iglooPosition) {
+                        // Calculate entrance direction to face center of map
+                        const entranceDirection = Math.atan2(-ai.iglooPosition.z, -ai.iglooPosition.x);
+                        
+                        // Create igloo for AI player with their ID
+                        GameClass.createIgloo(ai.iglooPosition, entranceDirection, ai.id);
+                        console.log(`Created igloo for AI player ${ai.id} with color matching player`);
+                    }
+                });
+            }, 200); // Slightly longer delay than human player to ensure all AI players are fully initialized
+            
+            console.log('AI players and their igloos created successfully!');
         } catch (error) {
             console.error('Error creating AI players:', error);
             // Continue without AI players if there's an error
@@ -534,14 +548,41 @@ class GameClass {
     static createIgloo(position, entranceDirection, ownerId) {
         try {
             // Check if Igloo class is available
-            if (typeof Igloo !== 'function') {
+            if (typeof window.Igloo !== 'function') {
                 console.error('Igloo class is not defined');
                 return;
             }
             
-            // Create the igloo
-            const igloo = new Igloo(GameClass.scene, position, entranceDirection, ownerId);
-            console.log(`Creating igloo for player ${ownerId}`);
+            // Find the player's color based on their ID
+            let playerColor;
+            
+            // Check if this is the human player's igloo
+            if (ownerId === 'player' && GameClass.player && GameClass.player.mesh) {
+                playerColor = GameClass.player.mesh.material.color.getHex();
+                console.log(`Using human player's actual color: ${playerColor.toString(16)}`);
+            } 
+            // Check if this is an AI player's igloo
+            else if (ownerId.includes('ai-') && GameClass.aiPlayers) {
+                // Find the AI player with this ID
+                const aiPlayer = GameClass.aiPlayers.find(ai => ai.id === ownerId);
+                if (aiPlayer && aiPlayer.mesh) {
+                    playerColor = aiPlayer.mesh.material.color.getHex();
+                    console.log(`Using AI player ${ownerId}'s actual color: ${playerColor.toString(16)}`);
+                } else {
+                    // If AI player not found, generate color using the same algorithm as in player.js
+                    const aiNumber = parseInt(ownerId.replace('ai-', ''), 10) || 0;
+                    const hue = (aiNumber * 137.5) % 360;
+                    playerColor = new THREE.Color().setHSL(hue / 360, 0.8, 0.5).getHex();
+                    console.log(`Generated color for AI player ${ownerId}: ${playerColor.toString(16)}`);
+                }
+            } else {
+                // Default white color if player type unknown
+                playerColor = 0xEEEEEE;
+            }
+            
+            // Create the igloo with the player's color
+            const igloo = new window.Igloo(GameClass.scene, position, entranceDirection, ownerId, playerColor);
+            console.log(`Creating igloo for player ${ownerId} with color ${playerColor.toString(16)}`);
             
             // Register with physics if available
             if (GameClass.physics) {

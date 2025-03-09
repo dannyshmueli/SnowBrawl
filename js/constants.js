@@ -24,7 +24,9 @@ const SnowBrawlConstants = {
         LOOK_SENSITIVITY: 0.002,
         GRAVITY: 30,
         ACCELERATION: 80,
-        DECELERATION: 10
+        DECELERATION: 10,
+        HIT_EFFECT_DURATION: 500, // milliseconds for hit effect to last
+        HIT_FLASH_COUNT: 3 // number of times to flash when hit
     },
     
     // Snowball Settings
@@ -34,10 +36,10 @@ const SnowBrawlConstants = {
         RADIUS: 0.35,
         THROW_SPEED: 15,
         THROW_COOLDOWN: 500, // milliseconds
-        MAX_THROW_DISTANCE: 20,
+        MAX_THROW_DISTANCE: 200,
         GRAVITY: 9.8,
         AIR_RESISTANCE: 0.01,
-        LIFETIME: 3000, // milliseconds before disappearing if no collision
+        LIFETIME: 9000, // milliseconds before disappearing if no collision
         REPLENISH_RATE: 1, // How many snowballs replenished per second in igloo
         KNOCKBACK_FORCE: 2
     },
