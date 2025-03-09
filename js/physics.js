@@ -196,7 +196,7 @@ class SnowBrawlPhysics {
                 // Skip players in safe zones - this is critical for game balance
                 if (SnowBrawlPhysics.isPlayerInSafeZone(player)) {
                     // Debug log for safe zone protection
-                    console.debug(`Player ${player.id} is in safe zone, can't be hit by snowball from ${snowball.ownerId}`);
+                    // console.debug(`Player ${player.id} is in safe zone, can't be hit by snowball from ${snowball.ownerId}`);
                     continue;
                 }
 
@@ -204,11 +204,11 @@ class SnowBrawlPhysics {
                 // Debug: Log detailed info for player snowballs near AI players
                 if (snowball.ownerId === 'player' && player.id !== 'player') {
                     const distance = snowball.position.distanceTo(player.position);
-                    if (distance < 10) { // Only log when within reasonable distance
-                        console.debug(`Player snowball near AI ${player.id}: distance=${distance.toFixed(1)}, ` +
-                                  `snowball=(${snowball.position.x.toFixed(1)}, ${snowball.position.y.toFixed(1)}, ${snowball.position.z.toFixed(1)}), ` +
-                                  `AI=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
-                    }
+                    // if (distance < 10) { // Only log when within reasonable distance
+                    //     console.debug(`Player snowball near AI ${player.id}: distance=${distance.toFixed(1)}, ` +
+                    //               `snowball=(${snowball.position.x.toFixed(1)}, ${snowball.position.y.toFixed(1)}, ${snowball.position.z.toFixed(1)}), ` +
+                    //               `AI=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
+                    // }
                 }
                 
                 // Calculate multiple check points on the player's body for better collision detection
@@ -676,7 +676,7 @@ class SnowBrawlPhysics {
             
             // Skip players in safe zones - respect safe zones for all players
             if (SnowBrawlPhysics.isPlayerInSafeZone(player)) { 
-                console.log(`Player ${player.id} is in safe zone, skipping path collision check`);
+                // console.log(`Player ${player.id} is in safe zone, skipping path collision check`);
                 continue;
             }
             

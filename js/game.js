@@ -913,7 +913,7 @@ class GameClass {
         // Remove snowballs
         for (const snowball of GameClass.snowballs) {
             if (snowball) {
-                GameClass.physics.unregisterBody(snowball);
+                GameClass.physics.unregisterCollider(snowball, 'snowballs');
                 GameClass.scene.remove(snowball.mesh);
             }
         }

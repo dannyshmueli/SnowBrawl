@@ -76,25 +76,6 @@ class SnowBrawlSnowball {
      * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
-        // FIRST CHECK: If this is a player snowball, IMMEDIATELY check for AI player hits
-        // This is the most important part and should happen before any other checks
-        if (!this.hasHit && this.ownerId === 'player') {
-            console.log(`PRIORITY CHECK: Player snowball at (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
-            
-            // Immediately try to hit an AI player
-            // try {
-            //     this.checkAIPlayerHits();
-                
-            //     // If we're still here and haven't hit anything, continue with normal update
-            //     if (this.hasHit) {
-            //         console.log('Player snowball hit confirmed, skipping rest of update');
-            //         return; // Skip the rest of the update if we've hit something
-            //     }
-            // } catch (error) {
-            //     console.error(`Critical error in priority hit check: ${error.message}`);
-            // }
-        }
-        
         // If we've already hit something, don't continue
         if (this.hasHit) return;
         
@@ -106,18 +87,7 @@ class SnowBrawlSnowball {
         
         // Update position from physics system
         this.mesh.position.copy(this.position);
-        
-        // // SECOND CHECK: Try again to hit AI players (double-check approach)
-        // if (this.ownerId === 'player') {
-        //     console.log(`SECOND CHECK: Player snowball at (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
-            
-        //     try {
-        //         this.checkAIPlayerHits();
-        //     } catch (error) {
-        //         console.error(`Error in second hit check: ${error.message}`);
-        //     }
-        // }
-        
+
         // Update trail
         this.updateTrail(deltaTime);
         
