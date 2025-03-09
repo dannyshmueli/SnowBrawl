@@ -437,7 +437,7 @@ class SnowBrawlPlayer {
         
         // Update UI
         if (this.isHuman && Game && Game.ui) {
-            Game.ui.updateSnowballCount(this.snowballCount);
+            Game.ui.updateSnowballCount(this.snowballCount, this.maxSnowballs);
         }
     }
     

@@ -19,10 +19,13 @@ window.SnowBrawlUI = class {
     cacheDOM() {
         // HUD elements
         this.healthValue = document.getElementById('health-value');
+        this.healthIcon = document.getElementById('health-icon');
         this.snowballsValue = document.getElementById('snowballs-value');
+        this.snowballBar = document.getElementById('snowball-bar');
+        this.snowballIcon = document.getElementById('snowball-icon');
         this.diamondsValue = document.getElementById('diamonds-value');
         this.scoreValue = document.getElementById('score-value');
-        this.timeValue = document.getElementById('time-value');
+        this.roundValue = document.getElementById('round-value');
         this.upgradeButton = document.getElementById('upgrade-button');
         
         // Menus
@@ -160,6 +163,11 @@ window.SnowBrawlUI = class {
         console.log('Showing start menu');
         this.startMenu.classList.remove('hidden');
         
+        // Hide upgrade button when game starts
+        if (this.upgradeButton) {
+            this.upgradeButton.classList.add('hidden');
+        }
+        
         // Set default duration option (5 minutes)
         this.durationOptions.forEach(option => {
             if (option.dataset.duration === '5') {
@@ -207,6 +215,11 @@ window.SnowBrawlUI = class {
     showGameOver(isWinner) {
         this.gameOverMenu.classList.remove('hidden');
         
+        // Show upgrade button at the end of the round
+        if (this.upgradeButton) {
+            this.upgradeButton.classList.remove('hidden');
+        }
+        
         if (isWinner) {
             this.gameOverTitle.textContent = 'Victory!';
             this.gameOverMessage.textContent = 'You are the last player standing!';
@@ -223,6 +236,11 @@ window.SnowBrawlUI = class {
      */
     hideGameOverMenu() {
         this.gameOverMenu.classList.add('hidden');
+        
+        // Hide upgrade button when starting a new round
+        if (this.upgradeButton) {
+            this.upgradeButton.classList.add('hidden');
+        }
     }
     
     /**
@@ -230,15 +248,54 @@ window.SnowBrawlUI = class {
      * @param {number} health - Current health
      */
     updateHealth(health) {
-        this.healthValue.textContent = health;
+        // Convert health to percentage (assuming max health is 100)
+        const healthPercentage = Math.max(0, Math.min(100, health));
+        this.healthValue.textContent = `${healthPercentage}%`;
+        
+        // Update health icon color based on health percentage
+        if (healthPercentage > 70) {
+            this.healthIcon.style.color = '#4CAF50'; // Green
+        } else if (healthPercentage > 30) {
+            this.healthIcon.style.color = '#FFC107'; // Yellow/Orange
+        } else {
+            this.healthIcon.style.color = '#F44336'; // Red
+        }
     }
     
     /**
      * Update snowball count display
      * @param {number} count - Current snowball count
+     * @param {number} maxCount - Maximum snowball count
      */
-    updateSnowballCount(count) {
-        this.snowballsValue.textContent = count;
+    updateSnowballCount(count, maxCount = 10) {
+        // Update text display
+        this.snowballsValue.textContent = `${count}/${maxCount}`;
+        
+        // Update progress bar if it exists
+        if (this.snowballBar) {
+            const percentage = (count / maxCount) * 100;
+            this.snowballBar.style.width = `${percentage}%`;
+            
+            // Update color based on count
+            if (count > maxCount * 0.7) {
+                this.snowballBar.style.backgroundColor = '#4CAF50'; // Green
+            } else if (count > maxCount * 0.3) {
+                this.snowballBar.style.backgroundColor = '#FFC107'; // Yellow/Orange
+            } else {
+                this.snowballBar.style.backgroundColor = '#F44336'; // Red
+            }
+        }
+        
+        // Update snowball icon color to match bar
+        if (this.snowballIcon) {
+            if (count > maxCount * 0.7) {
+                this.snowballIcon.style.color = '#4CAF50'; // Green
+            } else if (count > maxCount * 0.3) {
+                this.snowballIcon.style.color = '#FFC107'; // Yellow/Orange
+            } else {
+                this.snowballIcon.style.color = '#F44336'; // Red
+            }
+        }
     }
     
     /**
@@ -258,11 +315,13 @@ window.SnowBrawlUI = class {
     }
     
     /**
-     * Update time display
-     * @param {number} seconds - Time remaining in seconds
+     * Update round display
+     * @param {number} round - Current round number
      */
-    updateTime(seconds) {
-        this.timeValue.textContent = Utils.formatTime(seconds);
+    updateRound(round) {
+        if (this.roundValue) {
+            this.roundValue.textContent = round;
+        }
     }
     
     /**

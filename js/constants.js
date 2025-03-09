@@ -11,7 +11,7 @@ const SnowBrawlConstants = {
         MEDIUM: 10 * 60, // 10 minutes in seconds
         LONG: 15 * 60 // 15 minutes in seconds
     },
-    NUM_AI_PLAYERS: 10,
+    NUM_AI_PLAYERS: 4,
     
     // Player Settings
     PLAYER: {

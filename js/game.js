@@ -299,6 +299,11 @@ class GameClass {
                 true // isHuman
             );
             
+            // Initialize round display
+            if (GameClass.ui && typeof GameClass.ui.updateRound === 'function') {
+                GameClass.ui.updateRound(GameClass.currentRound);
+            }
+            
             console.log('Player created successfully');
             
             // Calculate positions around the map for igloos
@@ -343,16 +348,24 @@ class GameClass {
             
             // Set time remaining
             GameClass.timeRemaining = GameClass.gameDuration;
-            GameClass.ui.updateTime(GameClass.timeRemaining);
             console.log(`Time remaining set to ${GameClass.timeRemaining} seconds`);
+            
+            // Update UI with initial values
+            if (GameClass.ui) {
+                GameClass.ui.updateHealth(GameClass.player.health);
+                GameClass.ui.updateSnowballCount(GameClass.player.snowballCount, GameClass.player.maxSnowballs);
+                GameClass.ui.updateDiamondCount(GameClass.player.diamonds);
+                GameClass.ui.updateScore(GameClass.player.score);
+                GameClass.ui.updateRound(GameClass.currentRound);
+            }
             
             // Reset round counter and difficulty for new game
             GameClass.currentRound = 1;
             GameClass.difficultyMultiplier = 1.0;
             GameClass.isRoundOver = false;
             
-            // Create or update round display in UI
-            GameClass.createRoundDisplay();
+            // Update round display in UI
+            GameClass.updateRoundDisplay();
             
             // Set game as running
             GameClass.isRunning = true;
@@ -659,13 +672,9 @@ class GameClass {
                 }
             }
             
-            // Update time remaining
+            // Update time remaining (still needed for game logic but not displayed)
             if (typeof GameClass.timeRemaining === 'number') {
                 GameClass.timeRemaining -= deltaTime;
-                
-                if (GameClass.ui) {
-                    GameClass.ui.updateTime(Math.max(0, GameClass.timeRemaining));
-                }
                 
                 // Check if time is up
                 if (GameClass.timeRemaining <= 0) {
@@ -836,11 +845,10 @@ class GameClass {
         
         // Reset time remaining
         GameClass.timeRemaining = GameClass.gameDuration;
-        GameClass.ui.updateTime(GameClass.timeRemaining);
         
         // Update UI to show current round
-        if (document.getElementById('round-display')) {
-            document.getElementById('round-display').textContent = `Round ${GameClass.currentRound}`;
+        if (GameClass.ui && typeof GameClass.ui.updateRound === 'function') {
+            GameClass.ui.updateRound(GameClass.currentRound);
         }
         
         // Set game as running
@@ -866,30 +874,13 @@ class GameClass {
     }
     
     /**
-     * Create or update the round display in the UI
+     * Update the round display in the UI
      */
-    static createRoundDisplay() {
-        // Check if round display already exists
-        let roundDisplay = document.getElementById('round-display');
-        
-        if (!roundDisplay) {
-            // Create round display element
-            roundDisplay = document.createElement('div');
-            roundDisplay.id = 'round-display';
-            roundDisplay.classList.add('game-info');
-            
-            // Add to HUD
-            const hud = document.getElementById('hud');
-            if (hud) {
-                hud.appendChild(roundDisplay);
-            } else {
-                // Fallback to game container if HUD not found
-                document.getElementById('game-container').appendChild(roundDisplay);
-            }
+    static updateRoundDisplay() {
+        // Use the new UI method to update round display
+        if (GameClass.ui && typeof GameClass.ui.updateRound === 'function') {
+            GameClass.ui.updateRound(GameClass.currentRound);
         }
-        
-        // Update round display text
-        roundDisplay.textContent = `Round ${GameClass.currentRound}`;
     }
     
     /**
@@ -943,7 +934,7 @@ class GameClass {
             // Reset snowball count
             GameClass.player.snowballCount = GAME_CONSTANTS.PLAYER.INITIAL_SNOWBALLS;
             if (GameClass.ui) {
-                GameClass.ui.updateSnowballCount(GameClass.player.snowballCount);
+                GameClass.ui.updateSnowballCount(GameClass.player.snowballCount, GameClass.player.maxSnowballs);
             }
         }
     }
@@ -1011,10 +1002,8 @@ class GameClass {
                 GameClass.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.SHORT;
         }
         
-        // Update UI time display
-        if (GameClass.ui) {
-            GameClass.ui.updateTime(GameClass.gameDuration);
-        }
+        // Set time remaining for game logic (no UI update needed as we removed time display)
+        GameClass.timeRemaining = GameClass.gameDuration;
     }
     
     /**

@@ -5,17 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SnowBrawl</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Additional styles for updated UI elements */
+        #health-icon, #snowball-icon {
+            font-size: 1.5em;
+            margin-right: 5px;
+        }
+        
+        #health-container, #snowballs-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        #snowball-bar-container {
+            width: 100px;
+            height: 10px;
+            background-color: #444;
+            border-radius: 5px;
+            margin-left: 10px;
+            overflow: hidden;
+        }
+        
+        #snowball-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #4CAF50;
+            border-radius: 5px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
 </head>
 <body>
     <div id="game-container">
         <div id="hud">
             <div id="health-container">
+                <div id="health-icon">❤️</div>
                 <div id="health-label">Health:</div>
-                <div id="health-value">10</div>
+                <div id="health-value">100%</div>
             </div>
             <div id="snowballs-container">
+                <div id="snowball-icon">❄️</div>
                 <div id="snowballs-label">Snowballs:</div>
-                <div id="snowballs-value">10</div>
+                <div id="snowballs-value">10/10</div>
+                <div id="snowball-bar-container">
+                    <div id="snowball-bar"></div>
+                </div>
             </div>
             <div id="diamonds-container">
                 <div id="diamonds-label">Diamonds:</div>
@@ -25,11 +62,11 @@
                 <div id="score-label">Score:</div>
                 <div id="score-value">0</div>
             </div>
-            <div id="time-container">
-                <div id="time-label">Time:</div>
-                <div id="time-value">5:00</div>
+            <div id="round-container">
+                <div id="round-label">Round:</div>
+                <div id="round-value">1</div>
             </div>
-            <button id="upgrade-button" class="hud-button">Upgrades</button>
+            <button id="upgrade-button" class="hud-button hidden">Upgrades</button>
         </div>
         <div id="upgrade-menu" class="menu hidden">
             <h2>Upgrades</h2>
