@@ -17,7 +17,7 @@
             align-items: center;
         }
         
-        #snowball-bar-container {
+        #health-bar-container, #snowball-bar-container {
             width: 100px;
             height: 10px;
             background-color: #444;
@@ -26,11 +26,15 @@
             overflow: hidden;
         }
         
-        #snowball-bar {
+        #health-bar, #snowball-bar {
             height: 100%;
             width: 100%;
             background-color: #4CAF50;
             border-radius: 5px;
+        }
+        
+        #health-bar {
+            transition: width 0.3s ease, background-color 0.3s ease;
         }
         
         .hidden {
@@ -45,6 +49,9 @@
                 <div id="health-icon">❤️</div>
                 <div id="health-label">Health:</div>
                 <div id="health-value">100%</div>
+                <div id="health-bar-container">
+                    <div id="health-bar"></div>
+                </div>
             </div>
             <div id="snowballs-container">
                 <div id="snowball-icon">❄️</div>

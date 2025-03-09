@@ -20,6 +20,7 @@ window.SnowBrawlUI = class {
         // HUD elements
         this.healthValue = document.getElementById('health-value');
         this.healthIcon = document.getElementById('health-icon');
+        this.healthBar = document.getElementById('health-bar');
         this.snowballsValue = document.getElementById('snowballs-value');
         this.snowballBar = document.getElementById('snowball-bar');
         this.snowballIcon = document.getElementById('snowball-icon');
@@ -248,9 +249,26 @@ window.SnowBrawlUI = class {
      * @param {number} health - Current health
      */
     updateHealth(health) {
-        // Convert health to percentage (assuming max health is 100)
-        const healthPercentage = Math.max(0, Math.min(100, health));
+        // Get max health from constants
+        const maxHealth = GAME_CONSTANTS.PLAYER.INITIAL_HEALTH;
+        
+        // Calculate health percentage (0-100)
+        const healthPercentage = Math.max(0, Math.min(100, Math.round((health / maxHealth) * 100)));
         this.healthValue.textContent = `${healthPercentage}%`;
+        
+        // Update health bar width based on percentage
+        if (this.healthBar) {
+            this.healthBar.style.width = `${healthPercentage}%`;
+            
+            // Update health bar color based on percentage
+            if (healthPercentage > 70) {
+                this.healthBar.style.backgroundColor = '#4CAF50'; // Green
+            } else if (healthPercentage > 30) {
+                this.healthBar.style.backgroundColor = '#FFC107'; // Yellow/Orange
+            } else {
+                this.healthBar.style.backgroundColor = '#F44336'; // Red
+            }
+        }
         
         // Update health icon color based on health percentage
         if (healthPercentage > 70) {
