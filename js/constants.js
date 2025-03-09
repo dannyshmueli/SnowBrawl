@@ -11,7 +11,7 @@ const SnowBrawlConstants = {
         MEDIUM: 10 * 60, // 10 minutes in seconds
         LONG: 15 * 60 // 15 minutes in seconds
     },
-    NUM_AI_PLAYERS: 3,
+    NUM_AI_PLAYERS: 10,
     
     // Player Settings
     PLAYER: {
@@ -58,8 +58,8 @@ const SnowBrawlConstants = {
     
     // Map Settings
     MAP: {
-        WIDTH: 100,
-        LENGTH: 100,
+        WIDTH: 80,
+        LENGTH: 80,
         WALL_HEIGHT: 7,
         GROUND_COLOR: 0x7B9095, // Non-white ground color for snowball visibility
         WALL_COLOR: 0xCCE6FF,
@@ -136,18 +136,18 @@ const SnowBrawlConstants = {
     // AI Settings
     AI: {
         UPDATE_INTERVAL: 500, // milliseconds between AI decision updates
-        SIGHT_RANGE: 40, // How far AI can "see" players
+        SIGHT_RANGE: 50, // How far AI can "see" players
         REACTION_TIME: {
             MIN: 300, // Minimum reaction time in milliseconds
             MAX: 800 // Maximum reaction time in milliseconds
         },
         ACCURACY: {
-            MIN: 0.5, // Minimum accuracy (0-1)
+            MIN: 0.6, // Minimum accuracy (0-1)
             MAX: 0.9 // Maximum accuracy (0-1)
         },
         AGGRESSION: {
-            MIN: 0.3, // Minimum aggression (0-1)
-            MAX: 0.8 // Maximum aggression (0-1)
+            MIN: 0.5, // Minimum aggression (0-1)
+            MAX: 0.99 // Maximum aggression (0-1)
         },
         DIAMOND_INTEREST: {
             MIN: 0.4, // Minimum interest in diamonds (0-1)

@@ -134,27 +134,75 @@ window.Utils = {
     },
     
     /**
-     * Create a simple text sprite
+     * Create a text sprite with customizable options
      * @param {string} text - Text to display
-     * @param {number} size - Font size
-     * @param {string} color - Text color
+     * @param {Object} options - Customization options
+     * @param {string} options.fontColor - Text color
+     * @param {number} options.fontSize - Font size
+     * @param {string} options.fontFace - Font face
+     * @param {string} options.backgroundColor - Background color
+     * @param {string} options.borderColor - Border color
+     * @param {number} options.borderThickness - Border thickness
      * @returns {THREE.Sprite} Text sprite
      */
-    createTextSprite: (text, size = 24, color = '#ffffff') => {
+    createTextSprite: (text, options = {}) => {
+        // Set default values for options
+        const {
+            fontColor = '#ffffff',
+            fontSize = 24,
+            fontFace = 'Arial',
+            backgroundColor = 'rgba(0, 0, 0, 0.5)',
+            borderColor = '#ffffff',
+            borderThickness = 2
+        } = options;
+        
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-        canvas.width = 256;
-        canvas.height = 128;
+        canvas.width = 512; // Larger canvas for better resolution
+        canvas.height = 256;
         
-        context.font = `${size}px Arial`;
-        context.fillStyle = color;
+        // Background and border
+        if (backgroundColor) {
+            context.fillStyle = backgroundColor;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        if (borderColor && borderThickness > 0) {
+            context.strokeStyle = borderColor;
+            context.lineWidth = borderThickness;
+            context.strokeRect(borderThickness/2, borderThickness/2, 
+                canvas.width - borderThickness, canvas.height - borderThickness);
+        }
+        
+        // Text
+        context.font = `bold ${fontSize}px ${fontFace}`;
+        context.fillStyle = fontColor;
         context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        
+        // Add text shadow for better visibility
+        context.shadowColor = 'rgba(0, 0, 0, 0.7)';
+        context.shadowBlur = 7;
+        context.shadowOffsetX = 2;
+        context.shadowOffsetY = 2;
+        
+        // Draw text
         context.fillText(text, canvas.width / 2, canvas.height / 2);
         
+        // Reset shadow
+        context.shadowColor = 'transparent';
+        
         const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({ map: texture });
+        texture.minFilter = THREE.LinearFilter; // Improve text quality
+        texture.needsUpdate = true;
+        
+        const material = new THREE.SpriteMaterial({ 
+            map: texture,
+            transparent: true
+        });
+        
         const sprite = new THREE.Sprite(material);
-        sprite.scale.set(2, 1, 1);
+        sprite.scale.set(4, 2, 1); // Larger scale for better visibility
         
         return sprite;
     }

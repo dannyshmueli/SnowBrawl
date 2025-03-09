@@ -332,11 +332,30 @@ class SnowBrawlPlayer {
         
         // Create name with health percentage
         const healthPercent = Math.round((this.health / GAME_CONSTANTS.PLAYER.INITIAL_HEALTH) * 100);
+        
+        // Choose text color based on health percentage
+        let healthColor = '#00ff00'; // Green for good health
+        if (healthPercent < 30) {
+            healthColor = '#ff0000'; // Red for low health
+        } else if (healthPercent < 70) {
+            healthColor = '#ffff00'; // Yellow for medium health
+        }
+        
         const nameText = this.isHuman ? `You (${healthPercent}%)` : `AI ${this.id} (${healthPercent}%)`;
         
-        // Create text sprite
-        this.nameTag = Utils.createTextSprite(nameText);
-        this.nameTag.position.y = this.height + 0.5;
+        // Create text sprite with color based on health
+        this.nameTag = Utils.createTextSprite(nameText, {
+            fontColor: healthColor,
+            fontSize: 24,
+            borderColor: '#000000',
+            borderThickness: 4
+        });
+        
+        // Position the name tag higher above the character model
+        this.nameTag.position.y = this.height * 1.5;
+        
+        // Make the name tag larger and more visible
+        this.nameTag.scale.set(1.5, 1.5, 1.5);
         
         // Add to mesh
         if (this.mesh) {
@@ -447,6 +466,19 @@ class SnowBrawlPlayer {
             return; // Don't apply hit effect if eliminated
         }
         
+        // Get attacker to calculate knockback direction
+        const attacker = Game.getPlayerById(attackerId);
+        if (attacker) {
+            // Calculate direction from attacker to this player
+            const knockbackDir = new THREE.Vector3()
+                .subVectors(this.position, attacker.position)
+                .normalize();
+            
+            // Apply knockback based on damage
+            const knockbackForce = damage * 0.5;
+            this.applyKnockback(knockbackDir, knockbackForce);
+        }
+        
         // Apply hit effect - flash the player's color
         this.applyHitEffect();
         
@@ -467,24 +499,123 @@ class SnowBrawlPlayer {
      */
     applyHitEffect() {
         // Only apply if we have a valid mesh
-        if (!this.mesh || !this.mesh.material) {
+        if (!this.mesh) {
             return;
         }
         
-        // Store the original color if not already stored
-        if (!this.originalColor) {
-            this.originalColor = this.mesh.material.color.clone();
+        // Store original colors if not already stored
+        if (!this.originalColors) {
+            this.originalColors = new Map();
+            
+            // Check if this is a character model (has children with materials)
+            if (this.mesh.children && this.mesh.children.length > 0) {
+                // Store original colors for all mesh children
+                this.mesh.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        // Handle both single materials and material arrays
+                        if (Array.isArray(child.material)) {
+                            // For multi-material objects
+                            const colorArray = [];
+                            child.material.forEach((mat, index) => {
+                                if (mat.color) {
+                                    colorArray[index] = mat.color.clone();
+                                }
+                            });
+                            this.originalColors.set(child.uuid, colorArray);
+                        } else if (child.material.color) {
+                            // For single material objects
+                            this.originalColors.set(child.uuid, child.material.color.clone());
+                        }
+                    }
+                });
+            } else if (this.mesh.material && this.mesh.material.color) {
+                // For simple meshes with a single material
+                this.originalColors.set(this.mesh.uuid, this.mesh.material.color.clone());
+            }
         }
         
         // Set hit state
         this.isHit = true;
         this.hitTime = Date.now();
+        this.hitDuration = 500; // 500ms hit effect
+        this.hitFlashCount = 3; // Flash 3 times
         
-        // Set initial hit color (bright red)
-        this.mesh.material.color.set(0xFF0000);
+        // Apply hit color to all materials (bright red)
+        this.applyColorToAllMaterials(0xFF0000);
+        
+        // Create snow particle effect for hit
+        this.createHitParticles();
         
         // Schedule the hit effect update
         this.updateHitEffect();
+    }
+    
+    /**
+     * Apply a color to all materials in the mesh hierarchy
+     * @param {number} colorValue - Hex color value to apply
+     */
+    applyColorToAllMaterials(colorValue) {
+        if (!this.mesh) return;
+        
+        // Check if this is a character model with children
+        if (this.mesh.children && this.mesh.children.length > 0) {
+            // Apply color to all mesh children
+            this.mesh.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    // Handle both single materials and material arrays
+                    if (Array.isArray(child.material)) {
+                        // For multi-material objects
+                        child.material.forEach(mat => {
+                            if (mat.color) {
+                                mat.color.set(colorValue);
+                            }
+                        });
+                    } else if (child.material.color) {
+                        // For single material objects
+                        child.material.color.set(colorValue);
+                    }
+                }
+            });
+        } else if (this.mesh.material && this.mesh.material.color) {
+            // For simple meshes with a single material
+            this.mesh.material.color.set(colorValue);
+        }
+    }
+    
+    /**
+     * Restore original colors to all materials
+     */
+    restoreOriginalColors() {
+        if (!this.mesh || !this.originalColors) return;
+        
+        // Check if this is a character model with children
+        if (this.mesh.children && this.mesh.children.length > 0) {
+            // Restore original colors to all mesh children
+            this.mesh.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    const originalColor = this.originalColors.get(child.uuid);
+                    if (originalColor) {
+                        if (Array.isArray(child.material) && Array.isArray(originalColor)) {
+                            // For multi-material objects
+                            child.material.forEach((mat, index) => {
+                                if (mat.color && originalColor[index]) {
+                                    mat.color.copy(originalColor[index]);
+                                }
+                            });
+                        } else if (!Array.isArray(child.material) && !Array.isArray(originalColor)) {
+                            // For single material objects
+                            child.material.color.copy(originalColor);
+                        }
+                    }
+                }
+            });
+        } else if (this.mesh.material && this.mesh.material.color) {
+            // For simple meshes with a single material
+            const originalColor = this.originalColors.get(this.mesh.uuid);
+            if (originalColor) {
+                this.mesh.material.color.copy(originalColor);
+            }
+        }
     }
     
     /**
@@ -498,10 +629,8 @@ class SnowBrawlPlayer {
         
         // Check if hit effect duration has expired
         if (elapsedTime >= this.hitDuration) {
-            // Reset to original color
-            if (this.originalColor) {
-                this.mesh.material.color.copy(this.originalColor);
-            }
+            // Reset to original colors
+            this.restoreOriginalColors();
             this.isHit = false;
             return;
         }
@@ -510,11 +639,11 @@ class SnowBrawlPlayer {
         const flashPeriod = this.hitDuration / (this.hitFlashCount * 2);
         const flashState = Math.floor(elapsedTime / flashPeriod) % 2;
         
-        // Toggle between red and original color
+        // Toggle between red and original colors
         if (flashState === 0) {
-            this.mesh.material.color.set(0xFF0000);
-        } else if (this.originalColor) {
-            this.mesh.material.color.copy(this.originalColor);
+            this.applyColorToAllMaterials(0xFF0000);
+        } else {
+            this.restoreOriginalColors();
         }
         
         // Schedule next update
@@ -558,21 +687,178 @@ class SnowBrawlPlayer {
     }
     
     /**
+     * Create particle effect for hit
+     */
+    createHitParticles() {
+        // Clean up any existing hit particles
+        if (this.hitParticles) {
+            this.hitParticles.forEach(particle => {
+                if (particle.mesh && particle.mesh.parent) {
+                    this.scene.remove(particle.mesh);
+                }
+            });
+        }
+        
+        // Create new particles
+        const particleCount = 20; // More particles for better effect
+        const particleGeometry = new THREE.SphereGeometry(0.2, 4, 4);
+        
+        // Determine base color for particles
+        let particleBaseColor = 0xFFFFFF; // Default white
+        
+        // Try to extract a color from the mesh to make particles match the character
+        if (this.mesh) {
+            // For character models, try to find a body part to get color from
+            let colorFound = false;
+            
+            if (this.mesh.children && this.mesh.children.length > 0) {
+                this.mesh.traverse((child) => {
+                    if (!colorFound && child.isMesh && child.material && child.material.color) {
+                        particleBaseColor = child.material.color.getHex();
+                        colorFound = true;
+                    }
+                });
+            } else if (this.mesh.material && this.mesh.material.color) {
+                particleBaseColor = this.mesh.material.color.getHex();
+            }
+        }
+        
+        this.hitParticles = [];
+        
+        // Calculate position at the center of the mesh
+        const position = new THREE.Vector3();
+        this.mesh.getWorldPosition(position);
+        
+        // Adjust height to be around the center of the character
+        position.y += this.height / 2;
+        
+        for (let i = 0; i < particleCount; i++) {
+            // Create particles with varying colors based on the character's color
+            const hue = new THREE.Color(particleBaseColor).getHSL({}).h;
+            const saturation = 0.8;
+            const lightness = Utils.randomRange(0.5, 0.9); // Varying brightness
+            
+            const particleColor = new THREE.Color().setHSL(
+                hue, 
+                saturation, 
+                lightness
+            );
+            
+            const particleMaterial = new THREE.MeshBasicMaterial({
+                color: particleColor,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+            particle.position.copy(position);
+            
+            // Add some random offset to start position
+            particle.position.x += Utils.randomRange(-0.7, 0.7);
+            particle.position.y += Utils.randomRange(-0.7, 0.7);
+            particle.position.z += Utils.randomRange(-0.7, 0.7);
+            
+            // Random velocity for particle - more explosive
+            const velocity = new THREE.Vector3(
+                Utils.randomRange(-6, 6),
+                Utils.randomRange(3, 10), // More upward momentum
+                Utils.randomRange(-6, 6)
+            );
+            
+            this.scene.add(particle);
+            this.hitParticles.push({
+                mesh: particle,
+                velocity: velocity,
+                lifetime: Utils.randomRange(0.7, 1.2), // Longer lifetime
+                rotationSpeed: new THREE.Vector3(
+                    Utils.randomRange(-5, 5),
+                    Utils.randomRange(-5, 5),
+                    Utils.randomRange(-5, 5)
+                )
+            });
+        }
+        
+        // Set up animation for particles
+        let lastTime = performance.now();
+        
+        const updateParticles = (time) => {
+            const deltaTime = Math.min((time - lastTime) / 1000, 0.1);
+            lastTime = time;
+            
+            let allDone = true;
+            
+            for (const particle of this.hitParticles) {
+                if (particle.lifetime > 0) {
+                    // Update position
+                    particle.mesh.position.x += particle.velocity.x * deltaTime;
+                    particle.mesh.position.y += particle.velocity.y * deltaTime;
+                    particle.mesh.position.z += particle.velocity.z * deltaTime;
+                    
+                    // Apply gravity
+                    particle.velocity.y -= GAME_CONSTANTS.PHYSICS.GRAVITY * 2 * deltaTime;
+                    
+                    // Slow down horizontal movement with air resistance
+                    particle.velocity.x *= 0.95;
+                    particle.velocity.z *= 0.95;
+                    
+                    // Add rotation to particles for more dynamic effect
+                    if (particle.rotationSpeed) {
+                        particle.mesh.rotation.x += particle.rotationSpeed.x * deltaTime;
+                        particle.mesh.rotation.y += particle.rotationSpeed.y * deltaTime;
+                        particle.mesh.rotation.z += particle.rotationSpeed.z * deltaTime;
+                    }
+                    
+                    // Reduce lifetime
+                    particle.lifetime -= deltaTime;
+                    
+                    // Fade out
+                    particle.mesh.material.opacity = particle.lifetime;
+                    
+                    // Scale down as lifetime decreases
+                    const scale = Math.max(0.1, particle.lifetime);
+                    particle.mesh.scale.set(scale, scale, scale);
+                    
+                    allDone = false;
+                } else if (particle.mesh && particle.mesh.parent) {
+                    // Remove particle
+                    this.scene.remove(particle.mesh);
+                }
+            }
+            
+            if (!allDone) {
+                requestAnimationFrame(updateParticles);
+            }
+        };
+        
+        requestAnimationFrame(updateParticles);
+    }
+    
+    /**
      * Apply knockback force to player
      * @param {THREE.Vector3} direction - Direction of knockback
      * @param {number} force - Force of knockback
      */
     applyKnockback(direction, force) {
         // Apply stronger horizontal knockback
-        this.velocity.x += direction.x * force * 1.5;
-        this.velocity.z += direction.z * force * 1.5;
+        this.velocity.x += direction.x * force * 2.5; // Increased multiplier for more visible effect
+        this.velocity.z += direction.z * force * 2.5;
         
-        // Add a small vertical component to make the knockback more visible
-        // This creates a slight "hop" effect when hit
-        this.velocity.y += force * 0.5;
+        // Add a larger vertical component to make the knockback more visible
+        // This creates a more pronounced "hop" effect when hit
+        this.velocity.y += force * 1.2; // Increased vertical force
         
         // Ensure player is not on ground during knockback
         this.isOnGround = false;
+        
+        // Add a small random rotation to make the knockback feel more impactful
+        // This is especially effective for character models
+        if (!this.isHuman) { // Only for AI players to avoid disorienting the human player
+            // Add a small random rotation around the Y axis
+            const rotationImpulse = (Math.random() - 0.5) * Math.PI * 0.25; // Up to 45 degrees rotation
+            if (this.mesh) {
+                this.mesh.rotation.y += rotationImpulse;
+            }
+        }
         
         console.log(`Applied knockback to player ${this.id}: velocity=(${this.velocity.x.toFixed(2)}, ${this.velocity.y.toFixed(2)}, ${this.velocity.z.toFixed(2)})`);
     }

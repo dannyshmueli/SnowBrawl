@@ -22,6 +22,11 @@ class GameClass {
     static lastUpdateTime = 0;
     static igloos = []; // Array to store igloo objects
     
+    // Round-based gameplay properties
+    static currentRound = 1;
+    static isRoundOver = false;
+    static difficultyMultiplier = 1.0; // Increases with each round
+    
     /**
      * Initialize the game
      */
@@ -341,6 +346,14 @@ class GameClass {
             GameClass.ui.updateTime(GameClass.timeRemaining);
             console.log(`Time remaining set to ${GameClass.timeRemaining} seconds`);
             
+            // Reset round counter and difficulty for new game
+            GameClass.currentRound = 1;
+            GameClass.difficultyMultiplier = 1.0;
+            GameClass.isRoundOver = false;
+            
+            // Create or update round display in UI
+            GameClass.createRoundDisplay();
+            
             // Set game as running
             GameClass.isRunning = true;
             GameClass.lastUpdateTime = performance.now();
@@ -372,8 +385,9 @@ class GameClass {
     
     /**
      * Create AI players
+     * @param {number} difficultyMultiplier - Optional difficulty multiplier for AI stats
      */
-    static createAIPlayers() {
+    static createAIPlayers(difficultyMultiplier = 1.0) {
         const numAI = GAME_CONSTANTS.NUM_AI_PLAYERS;
         console.log(`Creating ${numAI} AI players...`);
         
@@ -394,7 +408,9 @@ class GameClass {
                         `ai-${i}`,
                         GameClass.scene,
                         null, // No camera for AI
-                        null  // No controls for AI
+                        null, // No controls for AI
+                        false, // Not human
+                        difficultyMultiplier // Apply difficulty multiplier
                     );
                 } catch (error) {
                     console.warn(`AIPlayer creation failed, using Player class instead: ${error.message}`);
@@ -662,10 +678,12 @@ class GameClass {
     }
     
     /**
-     * End the game
+     * End the game or round
+     * @param {boolean} finalGame - Whether this is the final game or just a round
      */
-    static endGame() {
+    static endGame(finalGame = false) {
         GameClass.isRunning = false;
+        GameClass.isRoundOver = true;
         
         // Determine winner based on who's still alive
         let winner = null;
@@ -683,9 +701,14 @@ class GameClass {
             }
         }
         
-        // If player is the only one alive, they win
+        // If player is the only one alive, they win the round
         if (alivePlayers === 1 && winner === GameClass.player) {
-            GameClass.ui.showGameOver(true);
+            if (finalGame) {
+                GameClass.ui.showGameOver(true);
+            } else {
+                // Show round completion UI with upgrade options
+                GameClass.completeRound(true);
+            }
         } 
         // If player is dead, they lose
         else if (!GameClass.player.isAlive) {
@@ -701,7 +724,15 @@ class GameClass {
             
             // Player wins if they have the highest score
             const isWinner = allPlayers[0] === GameClass.player;
-            GameClass.ui.showGameOver(isWinner);
+            if (finalGame) {
+                GameClass.ui.showGameOver(isWinner);
+            } else if (isWinner) {
+                // Show round completion UI with upgrade options
+                GameClass.completeRound(true);
+            } else {
+                // Player lost the round
+                GameClass.ui.showGameOver(false);
+            }
         }
         
         // Unlock pointer
@@ -709,9 +740,14 @@ class GameClass {
     }
     
     /**
-     * Check if game is over (only one player left)
+     * Check if round is over (only one player left)
      */
     static checkGameOver() {
+        // If round is already over, don't check again
+        if (GameClass.isRoundOver) {
+            return;
+        }
+        
         let alivePlayers = 0;
         
         if (GameClass.player.isAlive) {
@@ -724,9 +760,191 @@ class GameClass {
             }
         }
         
-        // If only one player is left, end the game
+        // If only one player is left, end the round
         if (alivePlayers <= 1) {
-            GameClass.endGame();
+            // If we're at a very high round (e.g., 10+), consider it the final game
+            const isFinalGame = GameClass.currentRound >= 10;
+            GameClass.endGame(isFinalGame);
+        }
+    }
+    
+    /**
+     * Complete a round and prepare for the next one
+     * @param {boolean} playerWon - Whether the player won the round
+     */
+    static completeRound(playerWon) {
+        console.log(`Round ${GameClass.currentRound} completed. Player won: ${playerWon}`);
+        
+        if (playerWon) {
+            // Show upgrade menu
+            if (GameClass.ui && typeof GameClass.ui.showUpgradeMenu === 'function') {
+                GameClass.ui.showUpgradeMenu();
+                
+                // Add event listener to the close upgrade menu button to start next round
+                const closeButton = document.getElementById('close-upgrade-menu');
+                if (closeButton) {
+                    // Remove existing event listeners
+                    const newButton = closeButton.cloneNode(true);
+                    closeButton.parentNode.replaceChild(newButton, closeButton);
+                    
+                    // Add new event listener
+                    newButton.addEventListener('click', () => {
+                        GameClass.ui.hideUpgradeMenu();
+                        GameClass.startNextRound();
+                    });
+                }
+            } else {
+                // If UI or showUpgradeMenu method not available, start next round immediately
+                setTimeout(() => GameClass.startNextRound(), 1000);
+            }
+        } else {
+            // Player lost, show game over
+            GameClass.ui.showGameOver(false);
+        }
+    }
+    
+    /**
+     * Start the next round with increased difficulty
+     */
+    static startNextRound() {
+        // Increment round counter
+        GameClass.currentRound++;
+        
+        // Increase difficulty
+        GameClass.difficultyMultiplier = 1.0 + (GameClass.currentRound - 1) * 0.2; // 20% increase per round
+        
+        // Reset round state
+        GameClass.isRoundOver = false;
+        
+        // Clear existing game objects except player
+        GameClass.clearGameObjectsExceptPlayer();
+        
+        // Reset player position
+        const positions = Utils.calculateIglooPositions(GAME_CONSTANTS.NUM_AI_PLAYERS + 1);
+        if (positions.length > 0) {
+            const iglooPosition = positions[0];
+            GameClass.player.position.set(iglooPosition.x, 1, iglooPosition.z);
+            
+            // Create igloo for human player
+            setTimeout(() => {
+                GameClass.createIgloo(iglooPosition, 0, GameClass.player.id);
+            }, 100);
+        }
+        
+        // Create AI players with increased difficulty
+        GameClass.createAIPlayersWithDifficulty();
+        
+        // Reset time remaining
+        GameClass.timeRemaining = GameClass.gameDuration;
+        GameClass.ui.updateTime(GameClass.timeRemaining);
+        
+        // Update UI to show current round
+        if (document.getElementById('round-display')) {
+            document.getElementById('round-display').textContent = `Round ${GameClass.currentRound}`;
+        }
+        
+        // Set game as running
+        GameClass.isRunning = true;
+        GameClass.lastUpdateTime = performance.now();
+        
+        // Lock pointer for camera control
+        setTimeout(() => {
+            if (GameClass.controls) {
+                GameClass.controls.lock();
+            }
+        }, 200);
+        
+        console.log(`Round ${GameClass.currentRound} started with difficulty multiplier ${GameClass.difficultyMultiplier.toFixed(1)}`);
+    }
+    
+    /**
+     * Create AI players with increased difficulty based on current round
+     */
+    static createAIPlayersWithDifficulty() {
+        // Use the current difficulty multiplier when creating AI players
+        GameClass.createAIPlayers(GameClass.difficultyMultiplier);
+    }
+    
+    /**
+     * Create or update the round display in the UI
+     */
+    static createRoundDisplay() {
+        // Check if round display already exists
+        let roundDisplay = document.getElementById('round-display');
+        
+        if (!roundDisplay) {
+            // Create round display element
+            roundDisplay = document.createElement('div');
+            roundDisplay.id = 'round-display';
+            roundDisplay.classList.add('game-info');
+            
+            // Add to HUD
+            const hud = document.getElementById('hud');
+            if (hud) {
+                hud.appendChild(roundDisplay);
+            } else {
+                // Fallback to game container if HUD not found
+                document.getElementById('game-container').appendChild(roundDisplay);
+            }
+        }
+        
+        // Update round display text
+        roundDisplay.textContent = `Round ${GameClass.currentRound}`;
+    }
+    
+    /**
+     * Clear all game objects except the player
+     */
+    static clearGameObjectsExceptPlayer() {
+        // Remove AI players
+        for (const ai of GameClass.aiPlayers) {
+            if (ai) {
+                // Call cleanup method if available to clear intervals and resources
+                if (typeof ai.cleanup === 'function') {
+                    ai.cleanup();
+                }
+                
+                // Unregister from physics system
+                GameClass.physics.unregisterCollider(ai, 'players');
+                
+                // Remove from scene if cleanup method doesn't handle it
+                if (ai.mesh && ai.mesh.parent) {
+                    GameClass.scene.remove(ai.mesh);
+                }
+            }
+        }
+        GameClass.aiPlayers = [];
+        
+        // Remove snowballs
+        for (const snowball of GameClass.snowballs) {
+            if (snowball) {
+                GameClass.physics.unregisterBody(snowball);
+                GameClass.scene.remove(snowball.mesh);
+            }
+        }
+        GameClass.snowballs = [];
+        
+        // Remove igloos
+        for (const igloo of GameClass.igloos) {
+            if (igloo && typeof igloo.remove === 'function') {
+                igloo.remove();
+            }
+        }
+        GameClass.igloos = [];
+        
+        // Reset player state but keep the player object
+        if (GameClass.player) {
+            // Reset player health
+            GameClass.player.health = GAME_CONSTANTS.PLAYER.MAX_HEALTH;
+            // Update UI
+            if (GameClass.ui) {
+                GameClass.ui.updateHealth(GameClass.player.health);
+            }
+            // Reset snowball count
+            GameClass.player.snowballCount = GAME_CONSTANTS.PLAYER.INITIAL_SNOWBALLS;
+            if (GameClass.ui) {
+                GameClass.ui.updateSnowballCount(GameClass.player.snowballCount);
+            }
         }
     }
     
@@ -734,6 +952,11 @@ class GameClass {
      * Restart the game
      */
     static restart() {
+        // Reset round counter and difficulty
+        GameClass.currentRound = 1;
+        GameClass.difficultyMultiplier = 1.0;
+        GameClass.isRoundOver = false;
+        
         // Clear existing game objects
         GameClass.clearGameObjects();
         

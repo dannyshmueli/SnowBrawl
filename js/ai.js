@@ -6,8 +6,11 @@
 
 // Using SnowBrawlAI instead of AIPlayer to avoid conflicts with built-in globals
 class SnowBrawlAI extends Player {
-    constructor(id, scene, camera, controls) {
-        super(id, scene, camera, controls, false);
+    constructor(id, scene, camera, controls, isHuman = false, difficultyMultiplier = 1.0) {
+        super(id, scene, camera, controls, isHuman);
+        
+        // Store difficulty multiplier for character appearance and behavior
+        this.difficultyMultiplier = difficultyMultiplier;
         
         // AI-specific properties
         this.updateInterval = GAME_CONSTANTS.AI.UPDATE_INTERVAL || 500;
@@ -25,35 +28,169 @@ class SnowBrawlAI extends Player {
         this.movementTimer = 0;
         this.movementDuration = 3000; // Time in ms before changing direction
         
-        // Customize AI appearance with random color
-        this.customizeAppearance();
+        // Scale AI properties based on difficulty
+        this.applyDifficultyScaling();
+        
+        // Create character model instead of default mesh
+        this.createCharacterModel();
         
         // Debug log to confirm AI creation
-        console.log(`AI Player ${id} created with radius: ${this.radius}, height: ${this.height}`);
+        console.log(`AI Player ${id} created with difficulty ${difficultyMultiplier.toFixed(1)}, radius: ${this.radius}, height: ${this.height}`);
     }
     
     /**
-     * Customize AI appearance with deterministic color based on ID
+     * Apply difficulty scaling to AI properties
      */
-    customizeAppearance() {
+    applyDifficultyScaling() {
+        // Scale AI properties based on difficulty
+        if (this.difficultyMultiplier > 1.0) {
+            // Increase movement speed with difficulty
+            this.moveSpeed *= Math.min(this.difficultyMultiplier, 1.5); // Cap at 1.5x speed
+            
+            // Increase throw speed and range with difficulty
+            this.throwSpeed *= Math.min(this.difficultyMultiplier, 1.8); // Cap at 1.8x throw speed
+            this.throwRange *= Math.min(this.difficultyMultiplier, 1.5); // Cap at 1.5x throw range
+            
+            // Decrease throw cooldown with difficulty (faster throws)
+            this.throwCooldown /= Math.min(this.difficultyMultiplier, 1.5); // Cap at 1.5x faster cooldown
+            
+            console.log(`AI ${this.id} scaled with difficulty ${this.difficultyMultiplier.toFixed(1)}: ` +
+                `Speed: ${this.moveSpeed.toFixed(1)}, Throw speed: ${this.throwSpeed.toFixed(1)}, ` +
+                `Range: ${this.throwRange.toFixed(1)}, Cooldown: ${this.throwCooldown.toFixed(1)}`);
+        }
+    }
+    
+    /**
+     * Create character model using the CharacterModels class
+     */
+    createCharacterModel() {
         try {
-            // Extract the AI number from the ID (e.g., 'ai-1' becomes 1)
+            // Extract the AI number from the ID for deterministic color
             const aiNumber = parseInt(this.id.replace('ai-', ''), 10) || 0;
             
             // Use the golden ratio multiplier to get well-distributed colors
-            // This matches the exact same algorithm used in player.js
             const hue = (aiNumber * 137.5) % 360; // 137.5° is approximately the golden angle in degrees
             const colorValue = new THREE.Color().setHSL(hue / 360, 0.8, 0.5).getHex();
             
             console.log(`AI Player ${this.id} using deterministic color with hue ${hue}, hex: ${colorValue.toString(16)}`);
             
-            // Apply color to mesh if it exists
-            if (this.mesh && this.mesh.material) {
-                this.mesh.material.color.set(colorValue);
+            // Remove default mesh from scene if it exists
+            if (this.mesh) {
+                this.scene.remove(this.mesh);
+            }
+            
+            // Create character model
+            if (typeof CharacterModels !== 'undefined' && typeof CharacterModels.createCharacter === 'function') {
+                // Create character model using the CharacterModels class
+                const characterGroup = CharacterModels.createCharacter(
+                    this.scene,
+                    this.id,
+                    this.difficultyMultiplier,
+                    colorValue
+                );
+                
+                // Set the character group as the mesh
+                this.mesh = characterGroup;
+                
+                // Add to scene
+                this.scene.add(this.mesh);
+                
+                // Create name tag with health indicator
+                this.updateNameTag();
+                
+                // Position the name tag higher above the character model
+                this.nameTag.position.y = this.height * 1.5; // Position higher above the character
+                
+                // Make the name tag larger and more visible
+                this.nameTag.scale.set(1.5, 1.5, 1.5);
+                
+                // Add to mesh
+                this.mesh.add(this.nameTag);
+                
+                // Set up a function to periodically update the name tag
+                this.nameTagUpdateInterval = setInterval(() => {
+                    if (this.isAlive) {
+                        this.updateNameTag();
+                        this.nameTag.position.y = this.height * 1.5;
+                        this.nameTag.scale.set(1.5, 1.5, 1.5);
+                    }
+                }, 1000); // Update every second
+                
+                console.log(`Created character model for AI ${this.id} with difficulty ${this.difficultyMultiplier.toFixed(1)}`);
+            } else {
+                console.warn('CharacterModels not available, falling back to default mesh');
+                // Fall back to default mesh creation
+                this.createDefaultMesh(colorValue);
             }
         } catch (error) {
-            console.error('Error customizing AI appearance:', error);
+            console.error(`Error creating character model: ${error.message}`);
+            // Fall back to default mesh creation
+            this.createDefaultMesh();
         }
+    }
+    
+    /**
+     * Create default mesh as fallback
+     * @param {number} colorValue - Optional color value
+     */
+    createDefaultMesh(colorValue) {
+        // Create default capsule geometry
+        const geometry = new THREE.CapsuleGeometry(this.radius, this.height - 2 * this.radius, 8, 8);
+        
+        // Determine color
+        if (!colorValue) {
+            const aiNumber = parseInt(this.id.replace('ai-', ''), 10) || 0;
+            const hue = (aiNumber * 137.5) % 360;
+            colorValue = new THREE.Color().setHSL(hue / 360, 0.8, 0.5).getHex();
+        }
+        
+        const material = new THREE.MeshLambertMaterial({ color: colorValue });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.position.copy(this.position);
+        
+        // Add to scene
+        this.scene.add(this.mesh);
+        
+        // Create name tag with health indicator
+        this.updateNameTag();
+        
+        // Position the name tag higher above the character model
+        this.nameTag.position.y = this.height * 1.5; // Position higher above the character
+        
+        // Make the name tag larger and more visible
+        this.nameTag.scale.set(1.5, 1.5, 1.5);
+        
+        // Add to mesh
+        this.mesh.add(this.nameTag);
+        
+        // Set up a function to periodically update the name tag
+        this.nameTagUpdateInterval = setInterval(() => {
+            if (this.isAlive) {
+                this.updateNameTag();
+                this.nameTag.position.y = this.height * 1.5;
+                this.nameTag.scale.set(1.5, 1.5, 1.5);
+            }
+        }, 1000); // Update every second
+        
+        console.log(`Created default mesh for AI ${this.id}`);
+    }
+    
+    /**
+     * Clean up resources when AI is destroyed
+     */
+    cleanup() {
+        // Clear the name tag update interval to prevent memory leaks
+        if (this.nameTagUpdateInterval) {
+            clearInterval(this.nameTagUpdateInterval);
+            this.nameTagUpdateInterval = null;
+        }
+        
+        // Remove from scene if mesh exists
+        if (this.mesh) {
+            this.scene.remove(this.mesh);
+        }
+        
+        console.log(`AI ${this.id} cleaned up`);
     }
     
     /**
