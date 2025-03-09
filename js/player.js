@@ -117,6 +117,9 @@ class SnowBrawlPlayer {
         this.updateNameTag();
         this.nameTag.position.y = this.height + 0.5;
         this.mesh.add(this.nameTag);
+        
+        // Create health bar
+        this.createHealthBar();
     }
     
     /**
@@ -218,6 +221,11 @@ class SnowBrawlPlayer {
         // Update camera position for human player
         if (this.isHuman && this.camera) {
             this.updateCamera();
+        }
+        
+        // Update health bar
+        if (this.healthBarSprite) {
+            this.updateHealthBar();
         }
     }
     
@@ -361,6 +369,9 @@ class SnowBrawlPlayer {
         if (this.mesh) {
             this.mesh.add(this.nameTag);
         }
+        
+        // Update health bar
+        this.updateHealthBar();
     }
     
     /**
@@ -373,6 +384,132 @@ class SnowBrawlPlayer {
             this.position.y + GAME_CONSTANTS.PLAYER.CAMERA_HEIGHT,
             this.position.z
         );
+    }
+    
+    /**
+     * Create a health bar above the player using a sprite
+     */
+    createHealthBar() {
+        // Create a canvas to draw the health bar
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        this.healthBarCanvas = canvas;
+        this.healthBarContext = canvas.getContext('2d');
+        
+        // Draw the initial health bar
+        this.drawHealthBarOnCanvas();
+        
+        // Create a sprite using the canvas as a texture
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false // Ensure it's always visible
+        });
+        
+        this.healthBarSprite = new THREE.Sprite(spriteMaterial);
+        
+        // Make the sprite larger
+        this.healthBarSprite.scale.set(5, 1.2, 1);
+        
+        // Position above player's head
+        this.healthBarSprite.position.y = this.height + 3.0;
+        
+        // Add to scene directly instead of to the mesh
+        // This ensures it's not affected by the mesh's transformations
+        if (Game && Game.scene) {
+            Game.scene.add(this.healthBarSprite);
+            this.healthBarInScene = true;
+        } else if (this.mesh) {
+            // Fallback to adding to mesh if scene not available
+            this.mesh.add(this.healthBarSprite);
+            this.healthBarInScene = false;
+        }
+    }
+    
+    /**
+     * Draw the health bar on the canvas
+     */
+    drawHealthBarOnCanvas() {
+        if (!this.healthBarCanvas || !this.healthBarContext) return;
+        
+        const ctx = this.healthBarContext;
+        const canvas = this.healthBarCanvas;
+        
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Calculate health percentage
+        const healthPercent = this.health / GAME_CONSTANTS.PLAYER.INITIAL_HEALTH;
+        
+        // Draw border (white)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background (black)
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(2, 2, canvas.width - 4, canvas.height - 4);
+        
+        // Choose color based on health percentage
+        let healthColor;
+        if (healthPercent < 0.3) {
+            healthColor = '#FF0000'; // Red for low health
+        } else if (healthPercent < 0.7) {
+            healthColor = '#FFFF00'; // Yellow for medium health
+        } else {
+            healthColor = '#00FF00'; // Green for good health
+        }
+        
+        // Draw health bar
+        ctx.fillStyle = healthColor;
+        const barWidth = (canvas.width - 8) * healthPercent;
+        ctx.fillRect(4, 4, barWidth, canvas.height - 8);
+        
+        // Add health percentage text
+        const healthText = Math.round(healthPercent * 100) + '%';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        
+        // Draw text with outline for better visibility
+        const textX = canvas.width / 2;
+        const textY = canvas.height / 2;
+        ctx.strokeText(healthText, textX, textY);
+        ctx.fillText(healthText, textX, textY);
+    }
+    
+    /**
+     * Update the health bar to reflect current health
+     */
+    updateHealthBar() {
+        if (!this.healthBarSprite) return;
+        
+        // Update the canvas
+        this.drawHealthBarOnCanvas();
+        
+        // Update the sprite position to follow the player
+        if (this.healthBarInScene && this.mesh) {
+            // Get the player's world position
+            const playerWorldPos = new THREE.Vector3();
+            this.mesh.getWorldPosition(playerWorldPos);
+            
+            // Position the health bar above the player
+            this.healthBarSprite.position.x = playerWorldPos.x;
+            this.healthBarSprite.position.z = playerWorldPos.z;
+            this.healthBarSprite.position.y = playerWorldPos.y + this.height + 3.0;
+        }
+        
+        // Update the texture
+        if (this.healthBarSprite.material && this.healthBarSprite.material.map) {
+            this.healthBarSprite.material.map.needsUpdate = true;
+        }
     }
     
     /**
@@ -492,6 +629,9 @@ class SnowBrawlPlayer {
         
         // Update health display for all players
         this.updateNameTag();
+        
+        // Update the 3D health bar
+        this.updateHealthBar();
     }
     
     /**
@@ -668,6 +808,28 @@ class SnowBrawlPlayer {
                     Game.ui.updateScore(attacker.score);
                 }
             }
+        }
+        
+        // Remove health bar sprite from scene if it exists
+        if (this.healthBarSprite) {
+            // If health bar was added directly to the scene
+            if (this.healthBarInScene && Game && Game.scene) {
+                Game.scene.remove(this.healthBarSprite);
+            } else if (this.mesh) {
+                // If health bar was added to the mesh
+                this.mesh.remove(this.healthBarSprite);
+            }
+            
+            // Dispose of health bar sprite material
+            if (this.healthBarSprite.material) {
+                if (this.healthBarSprite.material.map) {
+                    this.healthBarSprite.material.map.dispose();
+                }
+                this.healthBarSprite.material.dispose();
+            }
+            
+            // Clear the reference
+            this.healthBarSprite = null;
         }
         
         // Remove player mesh from scene
@@ -1015,6 +1177,46 @@ class SnowBrawlPlayer {
                 Game.ui.updateDiamondCount(this.diamondCount);
                 Game.ui.updateScore(this.score);
             }
+        }
+    }
+    
+    /**
+     * Clean up resources when player is removed
+     */
+    dispose() {
+        // Remove health bar sprite from scene if it was added directly to the scene
+        if (this.healthBarInScene && this.healthBarSprite && Game && Game.scene) {
+            Game.scene.remove(this.healthBarSprite);
+        }
+        
+        // Dispose of health bar sprite material
+        if (this.healthBarSprite && this.healthBarSprite.material) {
+            if (this.healthBarSprite.material.map) {
+                this.healthBarSprite.material.map.dispose();
+            }
+            this.healthBarSprite.material.dispose();
+        }
+        
+        // Remove from scene
+        if (this.mesh && this.mesh.parent) {
+            this.mesh.parent.remove(this.mesh);
+        }
+        
+        // Dispose of geometries and materials
+        if (this.mesh) {
+            this.mesh.traverse((child) => {
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+                
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(material => material.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            });
         }
     }
 }
