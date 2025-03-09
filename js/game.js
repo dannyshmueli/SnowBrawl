@@ -20,6 +20,7 @@ class GameClass {
     static gameDuration = GAME_CONSTANTS.GAME_DURATIONS.SHORT; // Default to 5 minutes
     static timeRemaining = 0;
     static lastUpdateTime = 0;
+    static igloos = []; // Array to store igloo objects
     
     /**
      * Initialize the game
@@ -295,17 +296,28 @@ class GameClass {
             
             console.log('Player created successfully');
             
-            // Position player
-            GameClass.player.position.set(0, 1, 0);
-            console.log('Player positioned at (0, 1, 0)');
-            
             // Calculate positions around the map for igloos
             const positions = Utils.calculateIglooPositions(GAME_CONSTANTS.NUM_AI_PLAYERS + 1);
             
             // Set igloo position for human player
             if (typeof GameClass.player.setIglooPosition === 'function') {
-                GameClass.player.setIglooPosition(positions[0]);
-                console.log('Human player igloo position set to:', positions[0]);
+                // Get the human player's igloo position
+                const iglooPosition = positions[0];
+                
+                // Set the player's igloo position
+                GameClass.player.setIglooPosition(iglooPosition);
+                console.log('Human player igloo position set to:', iglooPosition);
+                
+                // Position player at their igloo, just like AI players
+                GameClass.player.position.set(iglooPosition.x, 1, iglooPosition.z);
+                console.log(`Human player positioned at igloo: (${iglooPosition.x}, 1, ${iglooPosition.z})`);
+                
+                // Create igloo for human player
+                GameClass.createIgloo(iglooPosition, 0, GameClass.player.id);
+            } else {
+                // Fallback if setIglooPosition isn't available
+                GameClass.player.position.set(0, 1, 0);
+                console.log('Player positioned at default position (0, 1, 0)');
             }
             
             // Register player with physics system
@@ -399,6 +411,11 @@ class GameClass {
                 // Set igloo position if the method exists
                 if (typeof ai.setIglooPosition === 'function') {
                     ai.setIglooPosition(position);
+                    
+                    // Create igloo for AI player
+                    // Calculate entrance direction to face center of map
+                    const entranceDirection = Math.atan2(-position.z, -position.x);
+                    GameClass.createIgloo(position, entranceDirection, ai.id);
                 }
                 
                 // Register AI player with physics system
@@ -505,6 +522,38 @@ class GameClass {
             GameClass.renderer.render(GameClass.scene, GameClass.camera);
         } catch (error) {
             console.error('Error in animation loop:', error);
+        }
+    }
+    
+    /**
+     * Create an igloo at the specified position
+     * @param {THREE.Vector3} position - Position for the igloo
+     * @param {number} entranceDirection - Direction the entrance should face
+     * @param {string} ownerId - ID of the player who owns this igloo
+     */
+    static createIgloo(position, entranceDirection, ownerId) {
+        try {
+            // Check if Igloo class is available
+            if (typeof Igloo !== 'function') {
+                console.error('Igloo class is not defined');
+                return;
+            }
+            
+            // Create the igloo
+            const igloo = new Igloo(GameClass.scene, position, entranceDirection, ownerId);
+            console.log(`Creating igloo for player ${ownerId}`);
+            
+            // Register with physics if available
+            if (GameClass.physics) {
+                igloo.registerWithPhysics(GameClass.physics);
+            }
+            
+            // Add to igloos array
+            GameClass.igloos.push(igloo);
+            
+            console.log(`Igloo created at position (${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+        } catch (error) {
+            console.error('Error creating igloo:', error);
         }
     }
     

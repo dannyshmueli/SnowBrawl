@@ -415,17 +415,52 @@ class SnowBrawlPhysics {
      * @returns {boolean} True if player is in entrance
      */
     isPlayerInIglooEntrance(player, igloo) {
-        // Calculate entrance bounds
-        const entranceWidth = GAME_CONSTANTS.IGLOO.ENTRANCE_WIDTH;
-        const entranceHeight = GAME_CONSTANTS.IGLOO.ENTRANCE_HEIGHT;
+        // Safety check - if igloo doesn't have an entrancePosition, we can't check
+        if (!igloo.entrancePosition) {
+            console.warn('Igloo missing entrancePosition property', igloo);
+            return false;
+        }
+        
+        // Calculate entrance bounds - use extremely generous bounds
+        const entranceWidth = GAME_CONSTANTS.IGLOO.ENTRANCE_WIDTH * 1.5; // 50% wider for easier entry
+        const entranceHeight = GAME_CONSTANTS.IGLOO.ENTRANCE_HEIGHT * 1.5; // 50% taller for easier entry
+        const entranceDepth = 4.0; // Much larger depth for easier detection
         
         // Check if player is within entrance bounds
-        // This is a simplified check - would need to be adjusted based on actual igloo model
         const dx = Math.abs(player.position.x - igloo.entrancePosition.x);
         const dy = Math.abs(player.position.y - igloo.entrancePosition.y);
         const dz = Math.abs(player.position.z - igloo.entrancePosition.z);
         
-        return dx < entranceWidth / 2 && dy < entranceHeight / 2 && dz < 1;
+        // Only log when player is somewhat close to an igloo entrance to reduce console spam
+        if (dx < entranceWidth * 2 && dy < entranceHeight * 2 && dz < entranceDepth * 2) {
+            console.log(`Player position: (${player.position.x.toFixed(2)}, ${player.position.y.toFixed(2)}, ${player.position.z.toFixed(2)})`);
+            console.log(`Igloo entrance: (${igloo.entrancePosition.x.toFixed(2)}, ${igloo.entrancePosition.y.toFixed(2)}, ${igloo.entrancePosition.z.toFixed(2)})`);
+            console.log(`Distance to entrance: dx=${dx.toFixed(2)}, dy=${dy.toFixed(2)}, dz=${dz.toFixed(2)}`);
+            console.log(`Entrance bounds: width=${entranceWidth.toFixed(2)}, height=${entranceHeight.toFixed(2)}, depth=${entranceDepth.toFixed(2)}`);
+        }
+        
+        // More detailed logging when player is close to entrance
+        if (dx < entranceWidth && dy < entranceHeight && dz < entranceDepth) {
+            console.log(`Player ${player.id} is near entrance of igloo owned by ${igloo.ownerId}`);
+            
+            // Check if player is inside their own igloo
+            if (player.id === igloo.ownerId) {
+                console.log(`This is player's own igloo!`);
+            }
+            
+            if (dx < entranceWidth / 1.5 && dy < entranceHeight / 1.5 && dz < entranceDepth / 1.5) {
+                console.log(`Player ${player.id} is INSIDE entrance of igloo owned by ${igloo.ownerId}`);
+            }
+        }
+        
+        // VERY generous collision detection - prioritize gameplay over realism
+        // If the player is even remotely close to their own igloo entrance, let them in
+        if (player.id === igloo.ownerId) {
+            return dx < entranceWidth && dy < entranceHeight && dz < entranceDepth;
+        } else {
+            // For other players' igloos, be more strict
+            return dx < entranceWidth / 2 && dy < entranceHeight / 2 && dz < entranceDepth / 2;
+        }
     }
     
     /**

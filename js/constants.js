@@ -18,7 +18,7 @@ const SnowBrawlConstants = {
         INITIAL_HEALTH: 10,
         MOVEMENT_SPEED: 5,
         JUMP_FORCE: 10,
-        HEIGHT: 1.8, // Player height in units
+        HEIGHT: 1.0, // Player height in units
         RADIUS: 1.5, // Player collision radius
         CAMERA_HEIGHT: 1.6, // Camera height from player's feet
         LOOK_SENSITIVITY: 0.002,
@@ -44,12 +44,12 @@ const SnowBrawlConstants = {
     
     // Igloo Settings
     IGLOO: {
-        WIDTH: 4,
-        HEIGHT: 3,
+        WIDTH: 5,
+        HEIGHT: 5.4, // Increased to be 3x player height (3 * 1.8)
         DEPTH: 4,
         WALL_THICKNESS: 0.3,
-        ENTRANCE_WIDTH: 1.5,
-        ENTRANCE_HEIGHT: 2,
+        ENTRANCE_WIDTH: 3.5,
+        ENTRANCE_HEIGHT: 4.5, // Increased entrance height
         SAFE_ZONE_RADIUS: 5, // Area around igloo where player is safe
         REPLENISH_RADIUS: 3 // Area where snowballs replenish
     },
@@ -58,7 +58,7 @@ const SnowBrawlConstants = {
     MAP: {
         WIDTH: 100,
         LENGTH: 100,
-        WALL_HEIGHT: 5,
+        WALL_HEIGHT: 7,
         GROUND_COLOR: 0x7B9095, // Non-white ground color for snowball visibility
         WALL_COLOR: 0xCCE6FF,
         SNOW_COLOR: 0xFFFFFF,
@@ -134,7 +134,7 @@ const SnowBrawlConstants = {
     // AI Settings
     AI: {
         UPDATE_INTERVAL: 500, // milliseconds between AI decision updates
-        SIGHT_RANGE: 30, // How far AI can "see" players
+        SIGHT_RANGE: 40, // How far AI can "see" players
         REACTION_TIME: {
             MIN: 300, // Minimum reaction time in milliseconds
             MAX: 800 // Maximum reaction time in milliseconds
