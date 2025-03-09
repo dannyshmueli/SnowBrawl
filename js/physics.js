@@ -162,22 +162,134 @@ class SnowBrawlPhysics {
      * Check for collisions between snowballs and players
      */
     checkSnowballPlayerCollisions() {
+        // Make sure we have valid colliders
+        if (!this.colliders || !this.colliders.snowballs || !this.colliders.players) {
+            console.warn('Missing colliders for snowball-player collision check');
+            return;
+        }
+        
         for (const snowball of this.colliders.snowballs) {
             // Skip snowballs that have already hit something
-            if (snowball.hasHit) continue;
+            if (!snowball || snowball.hasHit) continue;
+            
+            // Log when player throws a snowball (only once when it's in the air)
+            if (snowball.ownerId === 'player' && snowball.position.y > 1.0 && !snowball.loggedInAir) {
+                console.log(`Player snowball in air: (${snowball.position.x.toFixed(1)}, ${snowball.position.y.toFixed(1)}, ${snowball.position.z.toFixed(1)})`);
+                snowball.loggedInAir = true;
+                
+                // Debug: Log all AI players' positions when a player snowball is thrown
+                console.log('AI Players available for hitting:');
+                for (const player of this.colliders.players) {
+                    if (player && player.id !== 'player' && player.isAlive) {
+                        console.log(`- AI ${player.id}: (${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)}), radius: ${player.radius?.toFixed(1) || 'undefined'}`);
+                    }
+                }
+            }
             
             for (const player of this.colliders.players) {
+                // Skip invalid players or those who are not alive
+                if (!player || !player.isAlive) continue;
+                
                 // Skip collisions with the player who threw the snowball
                 if (snowball.ownerId === player.id) continue;
                 
-                // Skip players in safe zones
-                if (player.isInSafeZone) continue;
+                // Skip players in safe zones - this is critical for game balance
+                if (SnowBrawlPhysics.isPlayerInSafeZone(player)) {
+                    // Debug log for safe zone protection
+                    console.log(`Player ${player.id} is in safe zone, can't be hit by snowball from ${snowball.ownerId}`);
+                    continue;
+                }
+
                 
-                // Calculate distance between snowball and player
-                const distance = snowball.position.distanceTo(player.position);
+                // Debug: Log detailed info for player snowballs near AI players
+                if (snowball.ownerId === 'player' && player.id !== 'player') {
+                    const distance = snowball.position.distanceTo(player.position);
+                    if (distance < 10) { // Only log when within reasonable distance
+                        console.log(`Player snowball near AI ${player.id}: distance=${distance.toFixed(1)}, ` +
+                                  `snowball=(${snowball.position.x.toFixed(1)}, ${snowball.position.y.toFixed(1)}, ${snowball.position.z.toFixed(1)}), ` +
+                                  `AI=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
+                    }
+                }
+                
+                // Calculate multiple check points on the player's body for better collision detection
+                // Ensure player has height property, default to 2.0 if not
+                const playerHeight = player.height || 2.0;
+                
+                const checkPoints = [
+                    player.position.clone(), // Base position (feet)
+                    new THREE.Vector3( // Middle body
+                        player.position.x,
+                        player.position.y + playerHeight * 0.5,
+                        player.position.z
+                    ),
+                    new THREE.Vector3( // Head
+                        player.position.x,
+                        player.position.y + playerHeight * 0.8,
+                        player.position.z
+                    )
+                ];
+                
+                // Add additional check points around the player for better hit detection
+                // This creates a more generous hit area especially for AI players
+                const radius = player.radius || 0.5;
+                const additionalPoints = [
+                    new THREE.Vector3(player.position.x + radius, player.position.y + playerHeight * 0.5, player.position.z),
+                    new THREE.Vector3(player.position.x - radius, player.position.y + playerHeight * 0.5, player.position.z),
+                    new THREE.Vector3(player.position.x, player.position.y + playerHeight * 0.5, player.position.z + radius),
+                    new THREE.Vector3(player.position.x, player.position.y + playerHeight * 0.5, player.position.z - radius)
+                ];
+                
+                checkPoints.push(...additionalPoints);
+                
+                // Check distance to each point and use the minimum
+                let minDistance = Infinity;
+                for (const point of checkPoints) {
+                    const pointDistance = snowball.position.distanceTo(point);
+                    minDistance = Math.min(minDistance, pointDistance);
+                }
+                
+                // Use a MUCH more generous collision threshold for better gameplay
+                // Increased from 3.0x to 5.0x for AI players to make hitting them easier
+                // This compensates for network latency and makes the game more fun
+                const playerRadius = player.radius || 0.5; // Default to 0.5 if radius is undefined
+                const multiplier = player.id === 'player' ? 3.0 : 5.0; // More generous for AI players
+                const collisionThreshold = snowball.radius + playerRadius * multiplier;
                 
                 // Check if collision occurred
-                if (distance < (snowball.radius + player.radius)) {
+                // Determine if this is a player snowball targeting an AI or vice versa
+                const isPlayerSnowball = snowball.ownerId === 'player';
+                const isAITarget = player.id !== 'player';
+                
+                // Use normal collision detection with a reasonable threshold
+                let effectiveCollisionThreshold = collisionThreshold;
+                
+                // Slightly increase threshold for player snowballs hitting AI (but not guaranteed)
+                if (isPlayerSnowball && isAITarget) {
+                    // Make it 1.5x easier for player snowballs to hit AI
+                    effectiveCollisionThreshold *= 1.5;
+                    console.log(`PHYSICS: Player snowball targeting AI ${player.id} at distance ${minDistance.toFixed(1)}, threshold: ${effectiveCollisionThreshold.toFixed(1)}`);
+                }
+                
+                // Slightly increase threshold for AI snowballs hitting player (but not extreme)
+                if (!isPlayerSnowball && !isAITarget) {
+                    // Make it 1.5x easier for AI snowballs to hit human player
+                    effectiveCollisionThreshold *= 1.5;
+                    console.log(`Using enhanced collision threshold for AI->player hit: ${effectiveCollisionThreshold.toFixed(1)}`);
+                }
+                
+                // Debug log for close misses
+                if (minDistance < effectiveCollisionThreshold * 1.2) {
+                    console.log(`PHYSICS: Close snowball! Distance: ${minDistance.toFixed(1)}, Threshold: ${effectiveCollisionThreshold.toFixed(1)}`);
+                }
+                
+                // No more forced hits - make it fair for both sides
+                const forceHit = false;
+                
+                if (minDistance < effectiveCollisionThreshold || forceHit) {
+                    // More detailed logging to show who hit whom
+                    const targetType = player.id === 'player' ? 'HUMAN PLAYER' : 'AI PLAYER';
+                    console.log(`*** SNOWBALL HIT! ${isPlayerSnowball ? 'Player hit' : 'AI hit'} ${targetType} ${player.id} ${forceHit ? '(FORCED HIT)' : ''} ***`);
+                    
                     // Handle hit
                     player.takeDamage(snowball.damage, snowball.ownerId);
                     
@@ -467,6 +579,19 @@ class SnowBrawlPhysics {
         
         // Update snowball positions
         this.colliders.snowballs.forEach(snowball => {
+            // Skip updating snowballs that have already hit something
+            if (snowball.hasHit) return;
+            
+            // Count active snowballs by owner
+            if (snowball.ownerId === 'player' && !snowball.counted) {
+                console.log(`Active player snowball: ID=${snowball.ownerId}`);
+                snowball.counted = true;
+            }
+            
+            // Store previous position for collision detection
+            const prevPosition = snowball.position.clone();
+            
+            // Update position based on velocity
             snowball.position.x += snowball.velocity.x * deltaTime;
             snowball.position.y += snowball.velocity.y * deltaTime;
             snowball.position.z += snowball.velocity.z * deltaTime;
@@ -475,10 +600,15 @@ class SnowBrawlPhysics {
             if (snowball.position.y <= snowball.radius) {
                 snowball.position.y = snowball.radius;
                 snowball.hit();
+                return;
             }
             
             // Check map boundaries
             this.constrainToMapBoundaries(snowball);
+            
+            // Check for collisions along the path of the snowball
+            // This helps catch fast-moving snowballs that might skip past players
+            this.checkSnowballPathCollision(snowball, prevPosition);
         });
     }
     
@@ -511,20 +641,93 @@ class SnowBrawlPhysics {
     }
     
     /**
+     * Check for collisions along the path of a snowball
+     * This helps catch fast-moving snowballs that might skip past players
+     * @param {Object} snowball - The snowball to check
+     * @param {THREE.Vector3} prevPosition - The previous position of the snowball
+     */
+    checkSnowballPathCollision(snowball, prevPosition) {
+        // Skip if snowball has already hit something
+        if (snowball.hasHit) return;
+        
+        // Calculate the direction and distance traveled this frame
+        const direction = new THREE.Vector3().subVectors(snowball.position, prevPosition).normalize();
+        const distance = snowball.position.distanceTo(prevPosition);
+        
+        // If distance is very small, no need for path checking
+        if (distance < 0.1) return;
+        
+        // Check for collisions with players along the path
+        for (const player of this.colliders.players) {
+            // Skip invalid players or those who are not alive
+            if (!player || !player.isAlive) continue;
+            
+            // Skip collisions with the player who threw the snowball
+            if (snowball.ownerId === player.id) continue;
+            
+            // Skip players in safe zones - respect safe zones for all players
+            if (SnowBrawlPhysics.isPlayerInSafeZone(player)) { 
+                console.log(`Player ${player.id} is in safe zone, skipping path collision check`);
+                continue;
+            }
+            
+            // Calculate closest point on the snowball's path to the player
+            const playerToStart = new THREE.Vector3().subVectors(player.position, prevPosition);
+            const projectionLength = playerToStart.dot(direction);
+            
+            // Skip if the closest point is behind the start or beyond the end
+            if (projectionLength < 0 || projectionLength > distance) continue;
+            
+            // Calculate the closest point on the path to the player
+            const closestPoint = new THREE.Vector3()
+                .copy(prevPosition)
+                .add(direction.clone().multiplyScalar(projectionLength));
+            
+            // Calculate distance from player to the closest point
+            const closestDistance = player.position.distanceTo(closestPoint);
+            
+            // Use a very generous collision threshold for path detection
+            const collisionThreshold = snowball.radius + player.radius * 4.0;
+            
+            // Check if collision occurred
+            // SPECIAL CASE: If player's snowball is near an AI, force a hit
+            const isPlayerSnowball = snowball.ownerId === 'player';
+            
+            // No more forced hits - make it fair for both sides
+            const forceHit = false;
+            
+            if (closestDistance < collisionThreshold || forceHit) {
+                // More detailed logging for path collisions
+                const targetType = player.id === 'player' ? 'HUMAN PLAYER' : 'AI PLAYER';
+                console.log(`*** PATH COLLISION! ${isPlayerSnowball ? 'Player hit' : 'AI hit'} ${targetType} ${player.id} ${forceHit ? '(FORCED HIT)' : ''} ***`);
+                
+                // Handle hit
+                player.takeDamage(snowball.damage, snowball.ownerId);
+                
+                // Apply knockback to player
+                const knockbackDirection = new THREE.Vector3()
+                    .subVectors(player.position, closestPoint)
+                    .normalize();
+                player.applyKnockback(
+                    knockbackDirection, 
+                    GAME_CONSTANTS.SNOWBALL.KNOCKBACK_FORCE
+                );
+                
+                // Mark snowball as hit and schedule for removal
+                snowball.hit();
+                break;
+            }
+        }
+    }
+    
+    /**
      * Check if a point is inside a player's safe zone
      * @param {THREE.Vector3} point - Point to check
      * @param {Object} player - Player object
      * @returns {boolean} True if point is in safe zone
      */
     isPointInSafeZone(point, player) {
-        const iglooPosition = player.iglooPosition;
-        const safeZoneRadius = GAME_CONSTANTS.IGLOO.SAFE_ZONE_RADIUS;
-        
-        const dx = point.x - iglooPosition.x;
-        const dz = point.z - iglooPosition.z;
-        const distanceSquared = dx * dx + dz * dz;
-        
-        return distanceSquared <= safeZoneRadius * safeZoneRadius;
+        return SnowBrawlPhysics.isPointInSafeZone(point, player);
     }
     
     /**
@@ -533,9 +736,40 @@ class SnowBrawlPhysics {
      * @returns {boolean} True if player is in safe zone
      */
     isPlayerInSafeZone(player) {
-        return this.isPointInSafeZone(player.position, player);
+        return SnowBrawlPhysics.isPointInSafeZone(player.position, player);
     }
 }
+
+/**
+ * Static method to check if a point is in a player's safe zone
+ * @param {THREE.Vector3} point - Point to check
+ * @param {Object} player - Player whose safe zone to check
+ * @returns {boolean} True if point is in safe zone
+ */
+SnowBrawlPhysics.isPointInSafeZone = function(point, player) {
+    // Make sure player has an igloo position set
+    if (!player || !player.iglooPosition) {
+        return false;
+    }
+    
+    const iglooPosition = player.iglooPosition;
+    const safeZoneRadius = GAME_CONSTANTS.IGLOO.SAFE_ZONE_RADIUS;
+    
+    const dx = point.x - iglooPosition.x;
+    const dz = point.z - iglooPosition.z;
+    const distanceSquared = dx * dx + dz * dz;
+    
+    return distanceSquared <= safeZoneRadius * safeZoneRadius;
+};
+
+/**
+ * Static method to check if a player is in a safe zone
+ * @param {Object} player - Player to check
+ * @returns {boolean} True if player is in safe zone
+ */
+SnowBrawlPhysics.isPlayerInSafeZone = function(player) {
+    return SnowBrawlPhysics.isPointInSafeZone(player.position, player);
+};
 
 // Expose SnowBrawlPhysics to the global scope as Physics to avoid conflicts with built-in objects
 // and to maintain compatibility with existing code

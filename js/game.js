@@ -299,6 +299,15 @@ class GameClass {
             GameClass.player.position.set(0, 1, 0);
             console.log('Player positioned at (0, 1, 0)');
             
+            // Calculate positions around the map for igloos
+            const positions = Utils.calculateIglooPositions(GAME_CONSTANTS.NUM_AI_PLAYERS + 1);
+            
+            // Set igloo position for human player
+            if (typeof GameClass.player.setIglooPosition === 'function') {
+                GameClass.player.setIglooPosition(positions[0]);
+                console.log('Human player igloo position set to:', positions[0]);
+            }
+            
             // Register player with physics system
             if (!GameClass.physics) {
                 console.error('Physics system is not initialized');
@@ -572,12 +581,12 @@ class GameClass {
         let winner = null;
         let alivePlayers = 0;
         
-        if (this.player.isAlive) {
-            winner = this.player;
+        if (GameClass.player.isAlive) {
+            winner = GameClass.player;
             alivePlayers++;
         }
         
-        for (const ai of this.aiPlayers) {
+        for (const ai of GameClass.aiPlayers) {
             if (ai.isAlive) {
                 winner = ai;
                 alivePlayers++;
@@ -585,28 +594,28 @@ class GameClass {
         }
         
         // If player is the only one alive, they win
-        if (alivePlayers === 1 && winner === this.player) {
-            this.ui.showGameOver(true);
+        if (alivePlayers === 1 && winner === GameClass.player) {
+            GameClass.ui.showGameOver(true);
         } 
         // If player is dead, they lose
-        else if (!this.player.isAlive) {
-            this.ui.showGameOver(false);
+        else if (!GameClass.player.isAlive) {
+            GameClass.ui.showGameOver(false);
         }
         // If time ran out, determine winner by score
-        else if (this.timeRemaining <= 0) {
+        else if (GameClass.timeRemaining <= 0) {
             // Get all players
-            const allPlayers = [this.player, ...this.aiPlayers];
+            const allPlayers = [GameClass.player, ...GameClass.aiPlayers];
             
             // Sort by score
             allPlayers.sort((a, b) => b.score - a.score);
             
             // Player wins if they have the highest score
-            const isWinner = allPlayers[0] === this.player;
-            this.ui.showGameOver(isWinner);
+            const isWinner = allPlayers[0] === GameClass.player;
+            GameClass.ui.showGameOver(isWinner);
         }
         
         // Unlock pointer
-        this.controls.unlock();
+        GameClass.controls.unlock();
     }
     
     /**
@@ -615,11 +624,11 @@ class GameClass {
     static checkGameOver() {
         let alivePlayers = 0;
         
-        if (this.player.isAlive) {
+        if (GameClass.player.isAlive) {
             alivePlayers++;
         }
         
-        for (const ai of this.aiPlayers) {
+        for (const ai of GameClass.aiPlayers) {
             if (ai.isAlive) {
                 alivePlayers++;
             }
@@ -627,7 +636,7 @@ class GameClass {
         
         // If only one player is left, end the game
         if (alivePlayers <= 1) {
-            this.endGame();
+            GameClass.endGame();
         }
     }
     
@@ -636,10 +645,10 @@ class GameClass {
      */
     static restart() {
         // Clear existing game objects
-        this.clearGameObjects();
+        GameClass.clearGameObjects();
         
         // Start new game
-        this.start();
+        GameClass.start();
     }
     
     /**
@@ -647,25 +656,25 @@ class GameClass {
      */
     static clearGameObjects() {
         // Remove player
-        if (this.player) {
-            this.physics.unregisterCollider(this.player, 'players');
-            this.scene.remove(this.player.mesh);
-            this.player = null;
+        if (GameClass.player) {
+            GameClass.physics.unregisterCollider(GameClass.player, 'players');
+            GameClass.scene.remove(GameClass.player.mesh);
+            GameClass.player = null;
         }
         
         // Remove AI players
-        for (const ai of this.aiPlayers) {
-            this.physics.unregisterCollider(ai, 'players');
-            this.scene.remove(ai.mesh);
+        for (const ai of GameClass.aiPlayers) {
+            GameClass.physics.unregisterCollider(ai, 'players');
+            GameClass.scene.remove(ai.mesh);
         }
-        this.aiPlayers = [];
+        GameClass.aiPlayers = [];
         
         // Remove snowballs
-        for (const snowball of this.snowballs) {
-            this.physics.unregisterCollider(snowball, 'snowballs');
-            this.scene.remove(snowball.mesh);
+        for (const snowball of GameClass.snowballs) {
+            GameClass.physics.unregisterCollider(snowball, 'snowballs');
+            GameClass.scene.remove(snowball.mesh);
         }
-        this.snowballs = [];
+        GameClass.snowballs = [];
     }
     
     /**
@@ -677,21 +686,21 @@ class GameClass {
         
         switch (minutes) {
             case 5:
-                this.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.SHORT;
+                GameClass.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.SHORT;
                 break;
             case 10:
-                this.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.MEDIUM;
+                GameClass.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.MEDIUM;
                 break;
             case 15:
-                this.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.LONG;
+                GameClass.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.LONG;
                 break;
             default:
-                this.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.SHORT;
+                GameClass.gameDuration = GAME_CONSTANTS.GAME_DURATIONS.SHORT;
         }
         
         // Update UI time display
-        if (this.ui) {
-            this.ui.updateTime(this.gameDuration);
+        if (GameClass.ui) {
+            GameClass.ui.updateTime(GameClass.gameDuration);
         }
     }
     
@@ -701,11 +710,11 @@ class GameClass {
      * @returns {Player|null} Player object or null if not found
      */
     static getPlayerById(id) {
-        if (this.player && this.player.id === id) {
-            return this.player;
+        if (GameClass.player && GameClass.player.id === id) {
+            return GameClass.player;
         }
         
-        for (const ai of this.aiPlayers) {
+        for (const ai of GameClass.aiPlayers) {
             if (ai.id === id) {
                 return ai;
             }

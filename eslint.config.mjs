@@ -25,6 +25,7 @@ export default [
         AI: "readonly",
         Snowball: "readonly",
         UI: "readonly",
+        SnowBrawlUI: "writable",
         Utils: "readonly"
       }
     },

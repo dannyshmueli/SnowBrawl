@@ -76,6 +76,26 @@ class SnowBrawlSnowball {
      * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
+        // FIRST CHECK: If this is a player snowball, IMMEDIATELY check for AI player hits
+        // This is the most important part and should happen before any other checks
+        if (!this.hasHit && this.ownerId === 'player') {
+            console.log(`PRIORITY CHECK: Player snowball at (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
+            
+            // Immediately try to hit an AI player
+            // try {
+            //     this.checkAIPlayerHits();
+                
+            //     // If we're still here and haven't hit anything, continue with normal update
+            //     if (this.hasHit) {
+            //         console.log('Player snowball hit confirmed, skipping rest of update');
+            //         return; // Skip the rest of the update if we've hit something
+            //     }
+            // } catch (error) {
+            //     console.error(`Critical error in priority hit check: ${error.message}`);
+            // }
+        }
+        
+        // If we've already hit something, don't continue
         if (this.hasHit) return;
         
         // Check lifetime
@@ -86,6 +106,17 @@ class SnowBrawlSnowball {
         
         // Update position from physics system
         this.mesh.position.copy(this.position);
+        
+        // SECOND CHECK: Try again to hit AI players (double-check approach)
+        if (this.ownerId === 'player') {
+            console.log(`SECOND CHECK: Player snowball at (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
+            
+            try {
+                this.checkAIPlayerHits();
+            } catch (error) {
+                console.error(`Error in second hit check: ${error.message}`);
+            }
+        }
         
         // Update trail
         this.updateTrail(deltaTime);
@@ -145,6 +176,75 @@ class SnowBrawlSnowball {
         setTimeout(() => {
             this.remove();
         }, 100);
+    }
+    
+    /**
+     * Check for hits against AI players directly from the snowball
+     * This is a special case to ensure player snowballs can hit AI players
+     */
+    checkAIPlayerHits() {
+        // Skip if already hit
+        if (this.hasHit) return;
+        
+        // EXTREME DEBUG - Always log this call
+        console.log(`EXTREME DEBUG: checkAIPlayerHits called for player snowball`);
+        
+        try {
+            // Check if Game.aiPlayers exists
+            if (!window.Game) {
+                console.error('Game is not available for direct hit detection');
+                return;
+            }
+            
+            if (!window.Game.aiPlayers || !window.Game.aiPlayers.length) {
+                console.error(`Game.aiPlayers is not available or empty: ${JSON.stringify(window.Game.aiPlayers)}`);
+                return;
+            }
+            
+            console.log(`Found ${window.Game.aiPlayers.length} AI players for direct hits`);
+            
+            // Check for hits against AI players with reasonable distance checks
+            for (const ai of window.Game.aiPlayers) {
+                // Skip invalid or dead AI players
+                if (!ai || !ai.isAlive) {
+                    continue;
+                }
+                
+                // Calculate distance to AI player
+                const distance = this.position.distanceTo(ai.position);
+                const hitThreshold = this.radius + ai.radius * 1.5; // Reasonable hit threshold
+                
+                // Log for debugging
+                console.log(`Checking AI ${ai.id} at distance ${distance.toFixed(1)}, threshold: ${hitThreshold.toFixed(1)}`);
+                
+                // Skip AI players in safe zone (respecting the game mechanics)
+                if (ai.isInSafeZone) {
+                    console.log(`AI ${ai.id} is in safe zone, skipping`);
+                    continue;
+                }
+                
+                // If close enough, register a hit
+                if (distance < hitThreshold) {
+                    console.log(`Snowball hit AI ${ai.id} at distance ${distance.toFixed(1)}`);
+                    
+                    // Apply damage to AI player
+                    try {
+                        ai.takeDamage(this.damage, this.ownerId);
+                    } catch (damageError) {
+                        console.error(`Error applying damage to AI ${ai.id}: ${damageError.message}`);
+                    }
+                    
+                    // Mark as hit
+                    this.hit();
+                    return;
+                }
+            }
+            
+            console.log('No valid AI targets found for guaranteed hit');
+        } catch (error) {
+            console.error(`CRITICAL ERROR in checkAIPlayerHits: ${error.message}`);
+            console.error(error.stack);
+        }
     }
     
     /**

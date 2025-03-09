@@ -29,16 +29,19 @@ class SnowBrawlPlayer {
         this.isOnGround = true;
         
         // Snowball properties
-        this.snowballDamage = GAME_CONSTANTS.SNOWBALL.DAMAGE;
+        // Note: We'll use GAME_CONSTANTS.SNOWBALL.DAMAGE directly when creating snowballs
+        // to ensure we always have the latest value
         this.snowballSize = GAME_CONSTANTS.SNOWBALL.RADIUS;
         this.throwSpeed = GAME_CONSTANTS.SNOWBALL.THROW_SPEED;
         this.throwRange = GAME_CONSTANTS.SNOWBALL.MAX_THROW_DISTANCE;
         this.lastThrowTime = 0;
         this.throwCooldown = GAME_CONSTANTS.SNOWBALL.THROW_COOLDOWN;
         
+        // Debug log player creation
+        console.log(`Player ${id} created. isHuman: ${isHuman}, radius: ${this.radius}, height: ${this.height}`);
+        
         // Status flags
         this.isAlive = true;
-        this.isInSafeZone = false;
         this.isInIgloo = false;
         this.lastReplenishTime = 0;
         
@@ -86,8 +89,8 @@ class SnowBrawlPlayer {
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.copy(this.position);
         
-        // Create player name tag
-        this.nameTag = Utils.createTextSprite(this.isHuman ? "You" : `AI ${this.id}`);
+        // Create player name tag with health display
+        this.updateNameTag();
         this.nameTag.position.y = this.height + 0.5;
         this.mesh.add(this.nameTag);
     }
@@ -176,9 +179,6 @@ class SnowBrawlPlayer {
         
         // Update position from physics system
         this.mesh.position.copy(this.position);
-        
-        // Check if in safe zone
-        this.checkSafeZone();
         
         // Replenish snowballs if in igloo
         if (this.isInIgloo) {
@@ -298,6 +298,29 @@ class SnowBrawlPlayer {
     }
     
     /**
+     * Update the player's name tag with health information
+     */
+    updateNameTag() {
+        // Remove existing name tag if it exists
+        if (this.nameTag && this.mesh) {
+            this.mesh.remove(this.nameTag);
+        }
+        
+        // Create name with health percentage
+        const healthPercent = Math.round((this.health / GAME_CONSTANTS.PLAYER.INITIAL_HEALTH) * 100);
+        const nameText = this.isHuman ? `You (${healthPercent}%)` : `AI ${this.id} (${healthPercent}%)`;
+        
+        // Create text sprite
+        this.nameTag = Utils.createTextSprite(nameText);
+        this.nameTag.position.y = this.height + 0.5;
+        
+        // Add to mesh
+        if (this.mesh) {
+            this.mesh.add(this.nameTag);
+        }
+    }
+    
+    /**
      * Update camera position for human player
      */
     updateCamera() {
@@ -345,12 +368,16 @@ class SnowBrawlPlayer {
         spawnPosition.add(direction.multiplyScalar(this.radius + this.snowballSize + 0.1));
         
         // Create snowball with player's stats
+        // Make sure we're using the current damage value from constants
+        const snowballDamage = GAME_CONSTANTS.SNOWBALL.DAMAGE;
+        console.log(`Creating snowball with damage: ${snowballDamage}, owner: ${this.id}`);
+        
         const snowball = new Snowball(
             this.scene,
             spawnPosition,
             direction,
             this.id,
-            this.snowballDamage,
+            snowballDamage, // Use the current damage value directly from constants
             this.snowballSize,
             this.throwSpeed,
             this.throwRange
@@ -377,10 +404,16 @@ class SnowBrawlPlayer {
      * @param {string} attackerId - ID of attacker
      */
     takeDamage(damage, attackerId) {
-        // Skip if in safe zone
-        if (this.isInSafeZone) return;
+        // Safe zone protection - players in safe zones can't be hit
+        if (Physics.isPlayerInSafeZone(this)) {
+            console.log(`Player ${this.id} is in safe zone, can't be hit`);
+            return;
+        }
         
-        // Reduce health
+        // Debug log to show actual damage being applied
+        console.log(`Player ${this.id} taking damage: ${damage} from ${attackerId}`);
+        
+        // Reduce health - ensure we're using the passed damage value
         this.health -= damage;
         
         // Check if eliminated
@@ -396,6 +429,9 @@ class SnowBrawlPlayer {
                 Game.ui.showHitIndicator();
             }
         }
+        
+        // Update health display for all players
+        this.updateNameTag();
     }
     
     /**
@@ -443,20 +479,7 @@ class SnowBrawlPlayer {
         this.velocity.x += direction.x * force;
         this.velocity.z += direction.z * force;
     }
-    
-    /**
-     * Check if player is in safe zone
-     */
-    checkSafeZone() {
-        if (this.iglooPosition) {
-            const dx = this.position.x - this.iglooPosition.x;
-            const dz = this.position.z - this.iglooPosition.z;
-            const distanceSquared = dx * dx + dz * dz;
-            
-            this.isInSafeZone = distanceSquared <= Math.pow(GAME_CONSTANTS.IGLOO.SAFE_ZONE_RADIUS, 2);
-        }
-    }
-    
+        
     /**
      * Replenish snowballs when in igloo
      */
@@ -480,11 +503,8 @@ class SnowBrawlPlayer {
     }
     
     /**
-     * Collect a diamond
-     * @param {Object} diamond - Diamond object
-     */
-    /**
      * Collect a diamond and update player stats
+     * @param {Object} diamond - Diamond object
      */
     collectDiamond() {
         this.diamondCount++;
@@ -592,7 +612,6 @@ class SnowBrawlPlayer {
         
         // Reset status
         this.isAlive = true;
-        this.isInSafeZone = false;
         this.isInIgloo = false;
         
         // Reset upgrades

@@ -16,10 +16,15 @@ class SnowBrawlAI extends Player {
         // AI state
         this.state = 'idle'; // idle, pursuing, attacking, retreating, collecting
         
+        // Ensure AI has proper collision properties
+        this.radius = GAME_CONSTANTS.PLAYER.RADIUS || 0.5;
+        this.height = GAME_CONSTANTS.PLAYER.HEIGHT || 2.0;
+        
         // Customize AI appearance with random color
         this.customizeAppearance();
         
-        console.log(`AI Player ${id} created`);
+        // Debug log to confirm AI creation
+        console.log(`AI Player ${id} created with radius: ${this.radius}, height: ${this.height}`);
     }
     
     /**
@@ -50,6 +55,12 @@ class SnowBrawlAI extends Player {
         
         if (!this.isAlive) return;
         
+        // Debug: Periodically log AI position to verify it's where we expect
+        const currentTime = Date.now();
+        if (currentTime % 5000 < 50) { // Log roughly every 5 seconds
+            console.log(`AI ${this.id} position: (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
+        }
+        
         // For now, just implement simple random movement
         this.simpleRandomMovement(deltaTime);
     }
@@ -61,14 +72,45 @@ class SnowBrawlAI extends Player {
         try {
             const currentTime = Date.now();
             
-            // Change direction occasionally
+            // Check if AI is in safe zone
+            const inSafeZone = Physics.isPlayerInSafeZone(this);
+            
+            // If in safe zone, have a higher chance to move away from it
+            if (inSafeZone) {
+                // Move away from igloo (safe zone center)
+                if (this.iglooPosition) {
+                    // Direction away from igloo
+                    const directionX = this.position.x - this.iglooPosition.x;
+                    const directionZ = this.position.z - this.iglooPosition.z;
+                    
+                    // Normalize direction
+                    const length = Math.sqrt(directionX * directionX + directionZ * directionZ);
+                    if (length > 0.001) { // Avoid division by zero
+                        const normalizedX = directionX / length;
+                        const normalizedZ = directionZ / length;
+                        
+                        // Move away from igloo with some randomness
+                        this.velocity.x = normalizedX * this.moveSpeed * (0.8 + Math.random() * 0.4);
+                        this.velocity.z = normalizedZ * this.moveSpeed * (0.8 + Math.random() * 0.4);
+                    } else {
+                        // Fallback to random movement if too close to center
+                        const angle = Utils.randomRange(0, Math.PI * 2);
+                        this.velocity.x = Math.cos(angle) * this.moveSpeed * 0.8;
+                        this.velocity.z = Math.sin(angle) * this.moveSpeed * 0.8;
+                    }
+                    
+                    console.log(`AI ${this.id} moving away from safe zone`);
+                }
+            } else {
+                // Regular random movement with some bias towards player
+                const angle = Utils.randomRange(0, Math.PI * 2);
+                this.velocity.x = Math.cos(angle) * this.moveSpeed * 0.6;
+                this.velocity.z = Math.sin(angle) * this.moveSpeed * 0.6;
+            }
+            
+            // Change behavior occasionally
             if (currentTime - this.lastUpdateTime > this.updateInterval) {
                 this.lastUpdateTime = currentTime;
-                
-                // Generate random movement direction
-                const angle = Utils.randomRange(0, Math.PI * 2);
-                this.velocity.x = Math.cos(angle) * this.moveSpeed * 0.5;
-                this.velocity.z = Math.sin(angle) * this.moveSpeed * 0.5;
                 
                 // Occasionally throw a snowball
                 if (Math.random() < 0.1 && this.snowballCount > 0) {
@@ -136,8 +178,8 @@ class SnowBrawlAI extends Player {
         this.velocity.x = direction.x * this.moveSpeed;
         this.velocity.z = direction.z * this.moveSpeed;
         
-        // Check if reached safe zone
-        if (this.isInSafeZone) {
+        // Check if reached safe zone 
+        if (Physics.isPlayerInSafeZone(this)) {
             // If health and snowballs are good, exit retreat mode
             if (
                 this.health > GAME_CONSTANTS.PLAYER.INITIAL_HEALTH * 0.8 &&
@@ -192,7 +234,7 @@ class SnowBrawlAI extends Player {
             if (player.id === this.id || !player.isAlive) continue;
             
             // Skip players in safe zones
-            if (player.isInSafeZone) continue;
+            if (Physics.isPlayerInSafeZone(player)) continue;
             
             // Calculate distance
             const distance = this.position.distanceTo(player.position);

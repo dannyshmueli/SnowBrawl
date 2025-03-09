@@ -19,7 +19,7 @@ const SnowBrawlConstants = {
         MOVEMENT_SPEED: 5,
         JUMP_FORCE: 10,
         HEIGHT: 1.8, // Player height in units
-        RADIUS: 0.5, // Player collision radius
+        RADIUS: 1.5, // Player collision radius
         CAMERA_HEIGHT: 1.6, // Camera height from player's feet
         LOOK_SENSITIVITY: 0.002,
         GRAVITY: 30,
@@ -31,7 +31,7 @@ const SnowBrawlConstants = {
     SNOWBALL: {
         INITIAL_COUNT: 10,
         DAMAGE: 1,
-        RADIUS: 0.15,
+        RADIUS: 0.35,
         THROW_SPEED: 15,
         THROW_COOLDOWN: 500, // milliseconds
         MAX_THROW_DISTANCE: 20,
