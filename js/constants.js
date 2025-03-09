@@ -11,7 +11,7 @@ const SnowBrawlConstants = {
         MEDIUM: 10 * 60, // 10 minutes in seconds
         LONG: 15 * 60 // 15 minutes in seconds
     },
-    NUM_AI_PLAYERS: 4,
+    NUM_AI_PLAYERS: 1,
     
     // Player Settings
     PLAYER: {
@@ -31,8 +31,8 @@ const SnowBrawlConstants = {
     
     // Snowball Settings
     SNOWBALL: {
-        INITIAL_COUNT: 10,
-        DAMAGE: 1,
+        INITIAL_COUNT: 20,
+        DAMAGE: 2,
         RADIUS: 0.35,
         THROW_SPEED: 15,
         THROW_COOLDOWN: 500, // milliseconds
@@ -137,6 +137,7 @@ const SnowBrawlConstants = {
     AI: {
         UPDATE_INTERVAL: 500, // milliseconds between AI decision updates
         SIGHT_RANGE: 50, // How far AI can "see" players
+        DIFFICULTY_INCREASE_RATE: 0.2, // 20% increase in difficulty per round
         REACTION_TIME: {
             MIN: 300, // Minimum reaction time in milliseconds
             MAX: 800 // Maximum reaction time in milliseconds

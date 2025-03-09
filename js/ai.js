@@ -26,7 +26,7 @@ class SnowBrawlAI extends Player {
         // Movement properties for smoother AI movement
         this.targetPosition = null;
         this.movementTimer = 0;
-        this.movementDuration = 3000; // Time in ms before changing direction
+        this.movementDuration = Utils.randomRange(1500, 2500); // Shorter initial duration for faster movement at game start
         
         // Scale AI properties based on difficulty
         this.applyDifficultyScaling();
@@ -205,10 +205,6 @@ class SnowBrawlAI extends Player {
         
         // Debug: Periodically log AI position to verify it's where we expect
         const currentTime = Date.now();
-        // if (currentTime % 5000 < 50) { // Log roughly every 5 seconds
-        //     console.log(`AI ${this.id} position: (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
-        // }
-        
         // For now, just implement simple random movement
         this.simpleRandomMovement(deltaTime);
     }
@@ -228,48 +224,19 @@ class SnowBrawlAI extends Player {
             if (!this.targetPosition || this.movementTimer >= this.movementDuration) {
                 this.movementTimer = 0;
                 
-                // Check if AI is in safe zone
-                const inSafeZone = Physics.isPlayerInSafeZone(this);
+                // Random movement in the game area - no safe zone logic
+                const gameSize = 100; // Assuming game area is 100x100
+                const margin = 10;
                 
-                // Set a new target position
-                if (inSafeZone && this.iglooPosition) {
-                    // Move away from igloo (safe zone center)
-                    const directionX = this.position.x - this.iglooPosition.x;
-                    const directionZ = this.position.z - this.iglooPosition.z;
-                    
-                    // Normalize direction
-                    const length = Math.sqrt(directionX * directionX + directionZ * directionZ);
-                    if (length > 0.001) { // Avoid division by zero
-                        const normalizedX = directionX / length;
-                        const normalizedZ = directionZ / length;
-                        
-                        // Set target position away from igloo
-                        const distance = 20 + Math.random() * 10; // Move 20-30 units away
-                        this.targetPosition = {
-                            x: this.position.x + normalizedX * distance,
-                            z: this.position.z + normalizedZ * distance
-                        };
-                        
-                        console.log(`AI ${this.id} moving away from safe zone to (${this.targetPosition.x.toFixed(1)}, ${this.targetPosition.z.toFixed(1)})`);
-                    } else {
-                        // Random direction if too close to center
-                        const angle = Utils.randomRange(0, Math.PI * 2);
-                        const distance = 15 + Math.random() * 10;
-                        this.targetPosition = {
-                            x: this.position.x + Math.cos(angle) * distance,
-                            z: this.position.z + Math.sin(angle) * distance
-                        };
-                    }
-                } else {
-                    // Random movement in the game area
-                    const gameSize = 100; // Assuming game area is 100x100
-                    const margin = 10;
-                    
-                    // Pick a random position within game bounds
-                    this.targetPosition = {
-                        x: Utils.randomRange(-gameSize/2 + margin, gameSize/2 - margin),
-                        z: Utils.randomRange(-gameSize/2 + margin, gameSize/2 - margin)
-                    };
+                // Pick a random position within game bounds
+                this.targetPosition = {
+                    x: Utils.randomRange(-gameSize/2 + margin, gameSize/2 - margin),
+                    z: Utils.randomRange(-gameSize/2 + margin, gameSize/2 - margin)
+                };
+                
+                // Set a shorter initial movement duration to make AI start moving quickly
+                if (this.movementDuration > 5000) {
+                    this.movementDuration = Utils.randomRange(2000, 4000);
                 }
                 
                 // Calculate velocity towards target position

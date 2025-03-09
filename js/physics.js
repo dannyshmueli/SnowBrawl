@@ -196,7 +196,7 @@ class SnowBrawlPhysics {
                 // Skip players in safe zones - this is critical for game balance
                 if (SnowBrawlPhysics.isPlayerInSafeZone(player)) {
                     // Debug log for safe zone protection
-                    console.log(`Player ${player.id} is in safe zone, can't be hit by snowball from ${snowball.ownerId}`);
+                    console.debug(`Player ${player.id} is in safe zone, can't be hit by snowball from ${snowball.ownerId}`);
                     continue;
                 }
 
@@ -205,7 +205,7 @@ class SnowBrawlPhysics {
                 if (snowball.ownerId === 'player' && player.id !== 'player') {
                     const distance = snowball.position.distanceTo(player.position);
                     if (distance < 10) { // Only log when within reasonable distance
-                        console.log(`Player snowball near AI ${player.id}: distance=${distance.toFixed(1)}, ` +
+                        console.debug(`Player snowball near AI ${player.id}: distance=${distance.toFixed(1)}, ` +
                                   `snowball=(${snowball.position.x.toFixed(1)}, ${snowball.position.y.toFixed(1)}, ${snowball.position.z.toFixed(1)}), ` +
                                   `AI=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
                     }

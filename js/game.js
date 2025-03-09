@@ -342,8 +342,8 @@ class GameClass {
             GameClass.physics.registerCollider(GameClass.player, 'players');
             console.log('Player registered with physics system');
             
-            // Create AI players
-            GameClass.createAIPlayers();
+            // Create AI players with difficulty multiplier
+            GameClass.createAIPlayersWithDifficulty();
             console.log('AI players created');
             
             // Set time remaining
@@ -402,7 +402,7 @@ class GameClass {
      */
     static createAIPlayers(difficultyMultiplier = 1.0) {
         const numAI = GAME_CONSTANTS.NUM_AI_PLAYERS;
-        console.log(`Creating ${numAI} AI players...`);
+        console.log(`Creating ${numAI} AI players with difficulty multiplier: ${difficultyMultiplier}`);
         
         try {
             // Clear existing AI players array
@@ -821,11 +821,22 @@ class GameClass {
         // Clear existing game objects except player
         GameClass.clearGameObjectsExceptPlayer();
         
-        // Reset player position
+        // Reset player position and stats
         const positions = Utils.calculateIglooPositions(GAME_CONSTANTS.NUM_AI_PLAYERS + 1);
         if (positions.length > 0) {
             const iglooPosition = positions[0];
             GameClass.player.position.set(iglooPosition.x, 1, iglooPosition.z);
+            
+            // Reset player's snowball count
+            GameClass.player.snowballCount = GAME_CONSTANTS.SNOWBALL.INITIAL_COUNT;
+            GameClass.player.maxSnowballCount = GAME_CONSTANTS.SNOWBALL.INITIAL_COUNT;
+            
+            // Update UI to show current snowball count
+            if (GameClass.ui && typeof GameClass.ui.updateSnowballCount === 'function') {
+                GameClass.ui.updateSnowballCount(GameClass.player.snowballCount, GameClass.player.maxSnowballCount);
+            }
+            
+            console.log(`Reset player's snowball count to ${GameClass.player.snowballCount}`);
             
             // Create igloo for human player
             setTimeout(() => {

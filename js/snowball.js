@@ -107,16 +107,16 @@ class SnowBrawlSnowball {
         // Update position from physics system
         this.mesh.position.copy(this.position);
         
-        // SECOND CHECK: Try again to hit AI players (double-check approach)
-        if (this.ownerId === 'player') {
-            console.log(`SECOND CHECK: Player snowball at (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
+        // // SECOND CHECK: Try again to hit AI players (double-check approach)
+        // if (this.ownerId === 'player') {
+        //     console.log(`SECOND CHECK: Player snowball at (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
             
-            try {
-                this.checkAIPlayerHits();
-            } catch (error) {
-                console.error(`Error in second hit check: ${error.message}`);
-            }
-        }
+        //     try {
+        //         this.checkAIPlayerHits();
+        //     } catch (error) {
+        //         console.error(`Error in second hit check: ${error.message}`);
+        //     }
+        // }
         
         // Update trail
         this.updateTrail(deltaTime);
@@ -186,9 +186,6 @@ class SnowBrawlSnowball {
         // Skip if already hit
         if (this.hasHit) return;
         
-        // EXTREME DEBUG - Always log this call
-        console.log(`EXTREME DEBUG: checkAIPlayerHits called for player snowball`);
-        
         try {
             // Check if Game.aiPlayers exists
             if (!window.Game) {
@@ -200,9 +197,7 @@ class SnowBrawlSnowball {
                 console.error(`Game.aiPlayers is not available or empty: ${JSON.stringify(window.Game.aiPlayers)}`);
                 return;
             }
-            
-            console.log(`Found ${window.Game.aiPlayers.length} AI players for direct hits`);
-            
+                        
             // Check for hits against AI players with reasonable distance checks
             for (const ai of window.Game.aiPlayers) {
                 // Skip invalid or dead AI players
@@ -213,10 +208,7 @@ class SnowBrawlSnowball {
                 // Calculate distance to AI player
                 const distance = this.position.distanceTo(ai.position);
                 const hitThreshold = this.radius + ai.radius * 1.5; // Reasonable hit threshold
-                
-                // Log for debugging
-                console.log(`Checking AI ${ai.id} at distance ${distance.toFixed(1)}, threshold: ${hitThreshold.toFixed(1)}`);
-                
+                                
                 // Skip AI players in safe zone (respecting the game mechanics)
                 if (ai.isInSafeZone) {
                     console.log(`AI ${ai.id} is in safe zone, skipping`);
@@ -239,8 +231,6 @@ class SnowBrawlSnowball {
                     return;
                 }
             }
-            
-            console.log('No valid AI targets found for guaranteed hit');
         } catch (error) {
             console.error(`CRITICAL ERROR in checkAIPlayerHits: ${error.message}`);
             console.error(error.stack);
