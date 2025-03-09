@@ -462,27 +462,13 @@ class GameClass {
                 GameClass.player.setIglooPosition(positions[0]);
             }
             
-            // Now that all AI players are created and initialized with their colors,
-            // create the igloos for each AI player with a slight delay to ensure colors are properly set
-            setTimeout(() => {
-                GameClass.aiPlayers.forEach((ai, index) => {
-                    if (ai.iglooPosition) {
-                        // Calculate entrance direction to face center of map
-                        const entranceDirection = Math.atan2(-ai.iglooPosition.z, -ai.iglooPosition.x);
-                        
-                        // Create igloo for AI player with their ID
-                        GameClass.createIgloo(ai.iglooPosition, entranceDirection, ai.id);
-                        console.log(`Created igloo for AI player ${ai.id} with color matching player`);
-                    }
-                });
-            }, 200); // Slightly longer delay than human player to ensure all AI players are fully initialized
-            
-            console.log('AI players and their igloos created successfully!');
+            console.log('AI players created successfully!');
         } catch (error) {
             console.error('Error creating AI players:', error);
             // Continue without AI players if there's an error
         }
     }
+    
     
     /**
      * Set up pointer lock event listeners
@@ -593,12 +579,12 @@ class GameClass {
             // Check if this is an AI player's igloo
             else if (ownerId.includes('ai-') && GameClass.aiPlayers) {
                 // Find the AI player with this ID
-                const aiPlayer = GameClass.aiPlayers.find(ai => ai.id === ownerId);
-                if (aiPlayer && aiPlayer.mesh) {
+                const aiPlayer = GameClass.aiPlayers.find(ai => ai && ai.id === ownerId);
+                if (aiPlayer && aiPlayer.mesh && aiPlayer.mesh.material && aiPlayer.mesh.material.color) {
                     playerColor = aiPlayer.mesh.material.color.getHex();
                     console.log(`Using AI player ${ownerId}'s actual color: ${playerColor.toString(16)}`);
                 } else {
-                    // If AI player not found, generate color using the same algorithm as in player.js
+                    // If AI player not found or doesn't have color, generate color using the same algorithm as in player.js
                     const aiNumber = parseInt(ownerId.replace('ai-', ''), 10) || 0;
                     const hue = (aiNumber * 137.5) % 360;
                     playerColor = new THREE.Color().setHSL(hue / 360, 0.8, 0.5).getHex();
@@ -819,8 +805,15 @@ class GameClass {
         // Increment round counter
         GameClass.currentRound++;
         
-        // Increase difficulty
-        GameClass.difficultyMultiplier = 1.0 + (GameClass.currentRound - 1) * 0.2; // 20% increase per round
+        // Log the before difficulty multiplier
+        console.log(`Before difficulty update: ${GameClass.difficultyMultiplier.toFixed(2)}x multiplier`);
+        
+        // Increase difficulty using the constant from GAME_CONSTANTS
+        GameClass.difficultyMultiplier = 1.0 + (GameClass.currentRound - 1) * GAME_CONSTANTS.AI.DIFFICULTY_INCREASE_RATE;
+        
+        // Log the after difficulty multiplier
+        console.log(`After difficulty update: ${GameClass.difficultyMultiplier.toFixed(2)}x multiplier (Round ${GameClass.currentRound})`);
+        console.log(`AI snowball throw chance: ${(0.1 * GameClass.difficultyMultiplier).toFixed(2) * 100}%`);
         
         // Reset round state
         GameClass.isRoundOver = false;

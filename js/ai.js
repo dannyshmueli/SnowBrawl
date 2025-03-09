@@ -205,9 +205,9 @@ class SnowBrawlAI extends Player {
         
         // Debug: Periodically log AI position to verify it's where we expect
         const currentTime = Date.now();
-        if (currentTime % 5000 < 50) { // Log roughly every 5 seconds
-            console.log(`AI ${this.id} position: (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
-        }
+        // if (currentTime % 5000 < 50) { // Log roughly every 5 seconds
+        //     console.log(`AI ${this.id} position: (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
+        // }
         
         // For now, just implement simple random movement
         this.simpleRandomMovement(deltaTime);
@@ -297,8 +297,9 @@ class SnowBrawlAI extends Player {
             if (currentTime - this.lastUpdateTime > this.updateInterval) {
                 this.lastUpdateTime = currentTime;
                 
-                // Occasionally throw a snowball
-                if (Math.random() < 0.1 && this.snowballCount > 0) {
+                // Occasionally throw a snowball, with increased frequency based on difficulty
+                const throwChance = 0.1 * (this.difficultyMultiplier || 1.0);
+                if (Math.random() < throwChance) {
                     this.throwSnowball();
                 }
             }
@@ -318,29 +319,66 @@ class SnowBrawlAI extends Player {
     }
     
     /**
-     * Throw a snowball in a random direction
+     * Override the throwSnowball method for AI players
+     * AI players have unlimited snowballs
+     * @param {THREE.Vector3} [inputDirection] - Optional direction to throw, random if not provided
      */
-    throwSnowball() {
+    throwSnowball(inputDirection) {
         try {
-            // Check if we have snowballs
-            if (this.snowballCount <= 0) return;
+            // Check cooldown
+            const currentTime = Date.now();
+            if (currentTime - this.lastThrowTime < this.throwCooldown) {
+                return;
+            }
             
-            // Generate a random direction
-            const angle = Utils.randomRange(0, Math.PI * 2);
-            const direction = new THREE.Vector3(
-                Math.cos(angle),
-                0.2, // Slight upward angle
-                Math.sin(angle)
-            ).normalize();
+            // Update last throw time
+            this.lastThrowTime = currentTime;
             
-            // Call the parent throwSnowball method
-            super.throwSnowball(direction);
+            // Create a local direction variable
+            let throwDirection;
+            
+            // If no direction provided, generate a random one
+            if (!inputDirection) {
+                const angle = Utils.randomRange(0, Math.PI * 2);
+                throwDirection = new THREE.Vector3(
+                    Math.cos(angle),
+                    0.2, // Slight upward angle
+                    Math.sin(angle)
+                ).normalize();
+            } else {
+                throwDirection = inputDirection.clone();
+            }
+            
+            // Create snowball at player position + offset in direction
+            const spawnPosition = new THREE.Vector3().copy(this.position);
+            spawnPosition.y += GAME_CONSTANTS.PLAYER.CAMERA_HEIGHT;
+            spawnPosition.add(throwDirection.multiplyScalar(this.radius + 0.5));
+            
+            // Create snowball with proper parameters
+            const snowball = new Snowball(
+                this.scene,
+                spawnPosition,
+                throwDirection,
+                this.id,
+                this.throwDamage || GAME_CONSTANTS.SNOWBALL.DAMAGE,
+                GAME_CONSTANTS.SNOWBALL.RADIUS,
+                this.throwSpeed,
+                GAME_CONSTANTS.SNOWBALL.MAX_DISTANCE
+            );
+            
+            // Properly register with Game.physics system
+            if (window.Game && window.Game.physics) {
+                window.Game.physics.registerCollider(snowball, 'snowballs');
+            }
+            
+            // Add to Game.snowballs array (not gameSnowballs)
+            if (window.Game && Array.isArray(window.Game.snowballs)) {
+                window.Game.snowballs.push(snowball);
+            }
         } catch (error) {
             console.error('Error throwing AI snowball:', error);
         }
     }
-    
-
     
     /**
      * Execute retreating behavior - move toward igloo
@@ -365,11 +403,8 @@ class SnowBrawlAI extends Player {
         
         // Check if reached safe zone 
         if (Physics.isPlayerInSafeZone(this)) {
-            // If health and snowballs are good, exit retreat mode
-            if (
-                this.health > GAME_CONSTANTS.PLAYER.INITIAL_HEALTH * 0.8 &&
-                this.snowballCount > this.maxSnowballCount * 0.8
-            ) {
+            // If health is good, exit retreat mode
+            if (this.health > GAME_CONSTANTS.PLAYER.INITIAL_HEALTH * 0.8) {
                 this.state = 'idle';
                 this.stateStartTime = Date.now();
             }

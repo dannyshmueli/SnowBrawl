@@ -272,31 +272,7 @@ class SnowBrawlPhysics {
                 const isPlayerSnowball = snowball.ownerId === 'player';
                 const isAITarget = player.id !== 'player';
                 
-                // Use normal collision detection with a reasonable threshold
-                let effectiveCollisionThreshold = collisionThreshold;
-                
-                // Slightly increase threshold for player snowballs hitting AI (but not guaranteed)
-                if (isPlayerSnowball && isAITarget) {
-                    // Make it 1.5x easier for player snowballs to hit AI
-                    effectiveCollisionThreshold *= 1.5;
-                    console.log(`PHYSICS: Player snowball targeting AI ${player.id} at distance ${minDistance.toFixed(1)}, threshold: ${effectiveCollisionThreshold.toFixed(1)}`);
-                }
-                
-                // Slightly increase threshold for AI snowballs hitting player (but not extreme)
-                if (!isPlayerSnowball && !isAITarget) {
-                    // Make it 1.5x easier for AI snowballs to hit human player
-                    effectiveCollisionThreshold *= 1.5;
-                    console.log(`Using enhanced collision threshold for AI->player hit: ${effectiveCollisionThreshold.toFixed(1)}`);
-                }
-                
-                // Calculate maximum allowed vertical distance (more strict than horizontal)
-                // This prevents snowballs high in the air from hitting players below them
                 const maxVerticalThreshold = playerHeight * 0.5;
-                
-                // Debug log for close misses and vertical misses
-                if (minDistance < effectiveCollisionThreshold * 1.2) {
-                    console.log(`PHYSICS: Close snowball! 3D Distance: ${minDistance.toFixed(1)}, Horizontal: ${minHorizontalDistance.toFixed(1)}, Vertical: ${minVerticalDistance.toFixed(1)}, Threshold: ${effectiveCollisionThreshold.toFixed(1)}`);
-                }
                 
                 // No more forced hits - make it fair for both sides
                 const forceHit = false;
@@ -450,29 +426,7 @@ class SnowBrawlPhysics {
         const dx = Math.abs(player.position.x - igloo.entrancePosition.x);
         const dy = Math.abs(player.position.y - igloo.entrancePosition.y);
         const dz = Math.abs(player.position.z - igloo.entrancePosition.z);
-        
-        // Only log when player is somewhat close to an igloo entrance to reduce console spam
-        if (dx < entranceWidth * 2 && dy < entranceHeight * 2 && dz < entranceDepth * 2) {
-            console.log(`Player position: (${player.position.x.toFixed(2)}, ${player.position.y.toFixed(2)}, ${player.position.z.toFixed(2)})`);
-            console.log(`Igloo entrance: (${igloo.entrancePosition.x.toFixed(2)}, ${igloo.entrancePosition.y.toFixed(2)}, ${igloo.entrancePosition.z.toFixed(2)})`);
-            console.log(`Distance to entrance: dx=${dx.toFixed(2)}, dy=${dy.toFixed(2)}, dz=${dz.toFixed(2)}`);
-            console.log(`Entrance bounds: width=${entranceWidth.toFixed(2)}, height=${entranceHeight.toFixed(2)}, depth=${entranceDepth.toFixed(2)}`);
-        }
-        
-        // More detailed logging when player is close to entrance
-        if (dx < entranceWidth && dy < entranceHeight && dz < entranceDepth) {
-            console.log(`Player ${player.id} is near entrance of igloo owned by ${igloo.ownerId}`);
-            
-            // Check if player is inside their own igloo
-            if (player.id === igloo.ownerId) {
-                console.log(`This is player's own igloo!`);
-            }
-            
-            if (dx < entranceWidth / 1.5 && dy < entranceHeight / 1.5 && dz < entranceDepth / 1.5) {
-                console.log(`Player ${player.id} is INSIDE entrance of igloo owned by ${igloo.ownerId}`);
-            }
-        }
-        
+                
         // VERY generous collision detection - prioritize gameplay over realism
         // If the player is even remotely close to their own igloo entrance, let them in
         if (player.id === igloo.ownerId) {

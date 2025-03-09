@@ -33,7 +33,8 @@ export default [
         Snowball: "readonly",
         UI: "readonly",
         SnowBrawlUI: "writable",
-        Utils: "readonly"
+        Utils: "readonly",
+        CharacterModels: "readonly"
       }
     },
     rules: {
