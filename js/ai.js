@@ -20,6 +20,11 @@ class SnowBrawlAI extends Player {
         this.radius = GAME_CONSTANTS.PLAYER.RADIUS || 0.5;
         this.height = GAME_CONSTANTS.PLAYER.HEIGHT || 2.0;
         
+        // Movement properties for smoother AI movement
+        this.targetPosition = null;
+        this.movementTimer = 0;
+        this.movementDuration = 3000; // Time in ms before changing direction
+        
         // Customize AI appearance with random color
         this.customizeAppearance();
         
@@ -67,19 +72,25 @@ class SnowBrawlAI extends Player {
     
     /**
      * Simple random movement for AI
+     * @param {number} deltaTime - Time since last frame in seconds
      */
-    simpleRandomMovement() {
+    simpleRandomMovement(deltaTime) {
         try {
             const currentTime = Date.now();
             
-            // Check if AI is in safe zone
-            const inSafeZone = Physics.isPlayerInSafeZone(this);
+            // Update movement timer
+            this.movementTimer += deltaTime * 1000; // Convert to milliseconds
             
-            // If in safe zone, have a higher chance to move away from it
-            if (inSafeZone) {
-                // Move away from igloo (safe zone center)
-                if (this.iglooPosition) {
-                    // Direction away from igloo
+            // Only change direction after the movement duration has passed
+            if (!this.targetPosition || this.movementTimer >= this.movementDuration) {
+                this.movementTimer = 0;
+                
+                // Check if AI is in safe zone
+                const inSafeZone = Physics.isPlayerInSafeZone(this);
+                
+                // Set a new target position
+                if (inSafeZone && this.iglooPosition) {
+                    // Move away from igloo (safe zone center)
                     const directionX = this.position.x - this.iglooPosition.x;
                     const directionZ = this.position.z - this.iglooPosition.z;
                     
@@ -89,23 +100,54 @@ class SnowBrawlAI extends Player {
                         const normalizedX = directionX / length;
                         const normalizedZ = directionZ / length;
                         
-                        // Move away from igloo with some randomness
-                        this.velocity.x = normalizedX * this.moveSpeed * (0.8 + Math.random() * 0.4);
-                        this.velocity.z = normalizedZ * this.moveSpeed * (0.8 + Math.random() * 0.4);
+                        // Set target position away from igloo
+                        const distance = 20 + Math.random() * 10; // Move 20-30 units away
+                        this.targetPosition = {
+                            x: this.position.x + normalizedX * distance,
+                            z: this.position.z + normalizedZ * distance
+                        };
+                        
+                        console.log(`AI ${this.id} moving away from safe zone to (${this.targetPosition.x.toFixed(1)}, ${this.targetPosition.z.toFixed(1)})`);
                     } else {
-                        // Fallback to random movement if too close to center
+                        // Random direction if too close to center
                         const angle = Utils.randomRange(0, Math.PI * 2);
-                        this.velocity.x = Math.cos(angle) * this.moveSpeed * 0.8;
-                        this.velocity.z = Math.sin(angle) * this.moveSpeed * 0.8;
+                        const distance = 15 + Math.random() * 10;
+                        this.targetPosition = {
+                            x: this.position.x + Math.cos(angle) * distance,
+                            z: this.position.z + Math.sin(angle) * distance
+                        };
                     }
+                } else {
+                    // Random movement in the game area
+                    const gameSize = 100; // Assuming game area is 100x100
+                    const margin = 10;
                     
-                    console.log(`AI ${this.id} moving away from safe zone`);
+                    // Pick a random position within game bounds
+                    this.targetPosition = {
+                        x: Utils.randomRange(-gameSize/2 + margin, gameSize/2 - margin),
+                        z: Utils.randomRange(-gameSize/2 + margin, gameSize/2 - margin)
+                    };
+                }
+                
+                // Calculate velocity towards target position
+                const dx = this.targetPosition.x - this.position.x;
+                const dz = this.targetPosition.z - this.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                
+                if (distance > 0.1) {
+                    this.velocity.x = (dx / distance) * this.moveSpeed * 0.7;
+                    this.velocity.z = (dz / distance) * this.moveSpeed * 0.7;
                 }
             } else {
-                // Regular random movement with some bias towards player
-                const angle = Utils.randomRange(0, Math.PI * 2);
-                this.velocity.x = Math.cos(angle) * this.moveSpeed * 0.6;
-                this.velocity.z = Math.sin(angle) * this.moveSpeed * 0.6;
+                // Check if we've reached the target position
+                const dx = this.targetPosition.x - this.position.x;
+                const dz = this.targetPosition.z - this.position.z;
+                const distanceSquared = dx * dx + dz * dz;
+                
+                if (distanceSquared < 1) {
+                    // We've reached the target, reset timer to pick a new target next frame
+                    this.movementTimer = this.movementDuration;
+                }
             }
             
             // Change behavior occasionally
